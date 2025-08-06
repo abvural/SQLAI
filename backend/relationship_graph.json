@@ -1,0 +1,75 @@
+{
+  "directed": true,
+  "multigraph": false,
+  "graph": {},
+  "nodes": [
+    {
+      "schema": "public",
+      "table": "order_items",
+      "row_count": -1,
+      "has_primary_key": true,
+      "column_count": 5,
+      "importance_score": 0.5,
+      "id": "public.order_items"
+    },
+    {
+      "schema": "public",
+      "table": "orders",
+      "row_count": -1,
+      "has_primary_key": true,
+      "column_count": 5,
+      "importance_score": 0.5,
+      "id": "public.orders"
+    },
+    {
+      "schema": "public",
+      "table": "products",
+      "row_count": -1,
+      "has_primary_key": true,
+      "column_count": 5,
+      "importance_score": 0.5,
+      "id": "public.products"
+    },
+    {
+      "schema": "public",
+      "table": "users",
+      "row_count": -1,
+      "has_primary_key": true,
+      "column_count": 4,
+      "importance_score": 0.5,
+      "id": "public.users"
+    }
+  ],
+  "links": [
+    {
+      "from_column": "order_id",
+      "to_column": "id",
+      "relationship_type": "many-to-one",
+      "constraint_name": "order_items_order_id_fkey",
+      "is_inferred": false,
+      "weight": 1.0,
+      "source": "public.order_items",
+      "target": "public.orders"
+    },
+    {
+      "from_column": "product_id",
+      "to_column": "id",
+      "relationship_type": "many-to-one",
+      "constraint_name": "order_items_product_id_fkey",
+      "is_inferred": false,
+      "weight": 1.0,
+      "source": "public.order_items",
+      "target": "public.products"
+    },
+    {
+      "from_column": "user_id",
+      "to_column": "id",
+      "relationship_type": "many-to-one",
+      "constraint_name": "orders_user_id_fkey",
+      "is_inferred": false,
+      "weight": 1.0,
+      "source": "public.orders",
+      "target": "public.users"
+    }
+  ]
+}

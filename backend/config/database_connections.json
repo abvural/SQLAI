@@ -1,0 +1,89 @@
+{
+  "databases": {
+    "2b21ad44-ad94-4f89-a38b-ed5db3123001": {
+      "id": "2b21ad44-ad94-4f89-a38b-ed5db3123001",
+      "name": "Production DB",
+      "host": "172.17.12.76",
+      "port": 5432,
+      "database": "postgres",
+      "username": "myuser",
+      "password": "Z0FBQUFBQm9rMGoxdmRkY1M3b25UV045MUdVVnIyM3o3YS0zYS1OVnFjTzVoamRRd2JQOFNXaUtEbTlCZVU5WERwNzZPRUgybVZGam5LdkNESGlnYk90T1paVVFXclBlN3c9PQ==",
+      "ssl_mode": "prefer",
+      "created_at": "2025-08-06T12:22:13.078025",
+      "last_connected": "2025-08-06T12:22:13.078173",
+      "schema_analyzed": false,
+      "status": "connected"
+    },
+    "4fd684e9-8457-4c9d-bae3-a1d1ab67de50": {
+      "id": "4fd684e9-8457-4c9d-bae3-a1d1ab67de50",
+      "name": "Test Database",
+      "host": "172.17.12.76",
+      "port": 5432,
+      "database": "postgres",
+      "username": "myuser",
+      "password": "Z0FBQUFBQm9rMDhoRUlMc1g5cWtwa19QLVh5V0t5bURPYXVnZmlrY1RqRHNXajJZMS0yZ0VpOHNZRlB2cVZlMDJ4dmsyYW9QOE0wSWw0ZjBPdU9saUdwTllTQWV6czAtaEE9PQ==",
+      "ssl_mode": "prefer",
+      "created_at": "2025-08-06T12:48:33.080728",
+      "last_connected": "2025-08-06T12:48:34.412825",
+      "schema_analyzed": false,
+      "status": "connected"
+    },
+    "cbaa90d7-e669-4e5d-bc92-62c1c2f6fb9e": {
+      "id": "cbaa90d7-e669-4e5d-bc92-62c1c2f6fb9e",
+      "name": "Test Database Schema Analysis",
+      "host": "172.17.12.76",
+      "port": 5432,
+      "database": "postgres",
+      "username": "myuser",
+      "password": "Z0FBQUFBQm9rMUxzM0ZfUWlNeUl2cjFtMlBtWFY5dUFIWmh1WDRzVFloTnRrUGFPcmhVSkU2b1lsSzdJc3FDQzRleDhUcTMzcjhXTzFmTzd0Rk9OTFU3QnF1UmlmdnJuUWc9PQ==",
+      "ssl_mode": "prefer",
+      "created_at": "2025-08-06T13:04:44.191695",
+      "last_connected": "2025-08-06T13:04:45.515547",
+      "schema_analyzed": false,
+      "status": "connected"
+    },
+    "4eadaa00-bd19-40cb-8346-20d12af3a4e5": {
+      "id": "4eadaa00-bd19-40cb-8346-20d12af3a4e5",
+      "name": "Test Database Schema Analysis",
+      "host": "172.17.12.76",
+      "port": 5432,
+      "database": "postgres",
+      "username": "myuser",
+      "password": "Z0FBQUFBQm9rMU1DV0FNMGpHV0Rib09QUFJTU1VTajFFWndkVF9mdHMxeWRhRzRvTjdmYlBXcnZ5QzRTV002T3Roc0kwcG5NXzR3d3VkcHd3VERjYmo0bXdteUVmY3dEeEE9PQ==",
+      "ssl_mode": "prefer",
+      "created_at": "2025-08-06T13:05:06.049416",
+      "last_connected": "2025-08-06T13:05:07.546571",
+      "schema_analyzed": false,
+      "status": "connected"
+    },
+    "b5a20310-a320-4fed-96a7-3334297e2be0": {
+      "id": "b5a20310-a320-4fed-96a7-3334297e2be0",
+      "name": "Test Graph Database",
+      "host": "172.17.12.76",
+      "port": 5432,
+      "database": "postgres",
+      "username": "myuser",
+      "password": "Z0FBQUFBQm9rMU9qdTA5aExaNEotbnN3OVNITExqQ2lrUFdySkpmclRVUEMwWmNTckV1YVJGRmdnVHNGN0tjdHpYdk9iWndzRUFFWWhhQk94cC1OWTVOd2xaeWhDNlFfRGc9PQ==",
+      "ssl_mode": "prefer",
+      "created_at": "2025-08-06T13:07:47.579046",
+      "last_connected": "2025-08-06T13:07:48.986354",
+      "schema_analyzed": false,
+      "status": "connected"
+    },
+    "cd528d9f-3808-4860-9756-d9d8703bc12a": {
+      "id": "cd528d9f-3808-4860-9756-d9d8703bc12a",
+      "name": "Test Query Database",
+      "host": "172.17.12.76",
+      "port": 5432,
+      "database": "postgres",
+      "username": "myuser",
+      "password": "Z0FBQUFBQm9rMWhOc3hYdFFBNVJRcE9qbWxqeTR6SGFHbTVRWEx6M0Q1QzUtTGI5ZFFta0VVTk9PSnJOazBEMWwtUXlkRUVUeWpCLUpuY3dFbV9uSVVjZElVOV9FR2Z2UlE9PQ==",
+      "ssl_mode": "prefer",
+      "created_at": "2025-08-06T13:27:41.949766",
+      "last_connected": "2025-08-06T13:27:42.450039",
+      "schema_analyzed": false,
+      "status": "connected"
+    }
+  },
+  "updated_at": "2025-08-06T13:27:42.450069"
+}

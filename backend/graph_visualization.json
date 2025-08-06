@@ -1,0 +1,113 @@
+{
+  "nodes": [
+    {
+      "id": "public.order_items",
+      "label": "order_items",
+      "schema": "public",
+      "size": 10,
+      "importance": 0.5,
+      "has_pk": true,
+      "degree": 2
+    },
+    {
+      "id": "public.orders",
+      "label": "orders",
+      "schema": "public",
+      "size": 10,
+      "importance": 0.5,
+      "has_pk": true,
+      "degree": 2
+    },
+    {
+      "id": "public.products",
+      "label": "products",
+      "schema": "public",
+      "size": 10,
+      "importance": 0.5,
+      "has_pk": true,
+      "degree": 1
+    },
+    {
+      "id": "public.users",
+      "label": "users",
+      "schema": "public",
+      "size": 10,
+      "importance": 0.5,
+      "has_pk": true,
+      "degree": 1
+    }
+  ],
+  "edges": [
+    {
+      "source": "public.order_items",
+      "target": "public.orders",
+      "from_column": "order_id",
+      "to_column": "id",
+      "type": "many-to-one",
+      "is_inferred": false
+    },
+    {
+      "source": "public.order_items",
+      "target": "public.products",
+      "from_column": "product_id",
+      "to_column": "id",
+      "type": "many-to-one",
+      "is_inferred": false
+    },
+    {
+      "source": "public.orders",
+      "target": "public.users",
+      "from_column": "user_id",
+      "to_column": "id",
+      "type": "many-to-one",
+      "is_inferred": false
+    }
+  ],
+  "stats": {
+    "total_nodes": 4,
+    "total_edges": 3,
+    "is_connected": true,
+    "number_of_components": 1,
+    "average_degree": 1.5,
+    "density": 0.25,
+    "hub_tables": [
+      [
+        "public.order_items",
+        2
+      ],
+      [
+        "public.orders",
+        2
+      ],
+      [
+        "public.products",
+        1
+      ],
+      [
+        "public.users",
+        1
+      ]
+    ],
+    "isolated_tables": [],
+    "has_cycles": false,
+    "largest_cycle_size": 1,
+    "most_central_tables": [
+      [
+        "public.orders",
+        0.16666666666666666
+      ],
+      [
+        "public.order_items",
+        0.0
+      ],
+      [
+        "public.products",
+        0.0
+      ],
+      [
+        "public.users",
+        0.0
+      ]
+    ]
+  }
+}
