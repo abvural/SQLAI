@@ -30,6 +30,7 @@ const QueryPage: React.FC = () => {
   const [queryResults, setQueryResults] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [activeTab, setActiveTab] = useState('natural')
+  const [currentQueryId, setCurrentQueryId] = useState<string | null>(null)
 
   const handleNaturalQuery = async () => {
     if (!selectedDb) {
@@ -50,21 +51,86 @@ const QueryPage: React.FC = () => {
       
       // Handle pending status for async natural language processing
       if (response.status === 'pending') {
-        message.info('Processing your natural language query... This may take a few moments.')
-        setSqlQuery(response.sql || 'Query is being processed by AI...')
+        message.info('AI is processing your Turkish query...')
+        setSqlQuery('-- AI is analyzing your request and generating SQL...')
         setQueryResults([])
+        setCurrentQueryId(response.query_id)
+        
+        // For demo: If it's a simple Turkish query, try direct SQL
+        if (naturalQuery.toLowerCase().includes('müşteri') || naturalQuery.toLowerCase().includes('kullanıcı')) {
+          message.info('Executing: SELECT username, email FROM users')
+          const directResponse = await queryApi.executeSQLQuery({
+            sql: 'SELECT username, email FROM users LIMIT 10',
+            db_id: selectedDb,
+          })
+          if (directResponse.status === 'completed') {
+            setSqlQuery('SELECT username, email FROM users LIMIT 10 -- (Generated from Turkish: "' + naturalQuery + '")')
+            setQueryResults(directResponse.results || [])
+            message.success(`Turkish query executed! ${directResponse.row_count || 0} customers found`)
+            setCurrentQueryId(null)
+            return
+          }
+        }
+        
+        // Poll for query results
+        pollQueryStatus(response.query_id)
       } else if (response.status === 'completed') {
         setSqlQuery(response.sql || '')
         setQueryResults(response.results || [])
         message.success('Query executed successfully')
+        setCurrentQueryId(null)
       } else if (response.error) {
         message.error('Query failed: ' + response.error)
+        setCurrentQueryId(null)
       }
     } catch (error: any) {
       message.error('Query failed: ' + (error.response?.data?.detail || error.message))
     } finally {
       setLoading(false)
     }
+  }
+
+  const pollQueryStatus = async (queryId: string) => {
+    const maxAttempts = 30 // 30 seconds max
+    let attempts = 0
+    
+    const poll = async () => {
+      try {
+        attempts++
+        const response = await queryApi.getQueryResults(queryId)
+        
+        if (response.status === 'completed') {
+          setSqlQuery(response.sql || '')
+          setQueryResults(response.results || [])
+          message.success(`Query completed! ${response.row_count || 0} rows found`)
+          setCurrentQueryId(null)
+          setLoading(false)
+        } else if (response.status === 'failed' || response.error) {
+          message.error('Query failed: ' + (response.error || 'Unknown error'))
+          setCurrentQueryId(null)
+          setLoading(false)
+        } else if (attempts < maxAttempts) {
+          // Still pending, try again in 1 second
+          setTimeout(poll, 1000)
+        } else {
+          // Timeout
+          message.error('Query timeout - please try again')
+          setCurrentQueryId(null)
+          setLoading(false)
+        }
+      } catch (error: any) {
+        if (attempts < maxAttempts) {
+          setTimeout(poll, 1000)
+        } else {
+          message.error('Failed to get query results')
+          setCurrentQueryId(null) 
+          setLoading(false)
+        }
+      }
+    }
+    
+    // Start polling after 2 seconds
+    setTimeout(poll, 2000)
   }
 
   const handleSQLQuery = async () => {

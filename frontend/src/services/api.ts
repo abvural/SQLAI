@@ -113,6 +113,13 @@ export const queryApi = {
     const response = await apiClient.get(`/query/progress/${queryId}`)
     return response.data
   },
+
+  getQueryResults: async (queryId: string, offset?: number, limit?: number) => {
+    const response = await apiClient.get(`/query/results/${queryId}`, {
+      params: { offset, limit }
+    })
+    return response.data
+  },
   
   getQueryHistory: async (params?: any) => {
     const response = await apiClient.get('/query/history', { params })
