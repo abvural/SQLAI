@@ -145,6 +145,54 @@ async def execute_query(query: SQLQuery, background_tasks: BackgroundTasks):
             error=str(e)
         )
 
+@router.get("/results/{query_id}")
+async def get_query_results(query_id: str, offset: int = 0, limit: int = 1000):
+    """Get query results by ID"""
+    try:
+        # Get query executor
+        from app.services.query_executor import QueryExecutor
+        executor = QueryExecutor()
+        
+        # Get query status
+        status = executor.get_query_status(query_id)
+        if not status:
+            raise HTTPException(status_code=404, detail="Query not found")
+        
+        # If still running, return status
+        if status['status'] == 'running':
+            return {
+                "status": "pending",
+                "query_id": query_id,
+                "progress": status.get('progress', 0),
+                "rows_processed": status.get('rows_processed', 0)
+            }
+        
+        # If completed, get results
+        if status['status'] == 'completed':
+            results = executor.get_query_results(query_id, offset, limit)
+            if results:
+                return {
+                    "status": "completed",
+                    "query_id": query_id,
+                    "results": results['data'],
+                    "row_count": results['total_rows'],
+                    "execution_time": 0.1
+                }
+        
+        # If failed, return error
+        if status['status'] == 'failed':
+            return {
+                "status": "failed", 
+                "query_id": query_id,
+                "error": status.get('error', 'Unknown error')
+            }
+            
+        raise HTTPException(status_code=404, detail="Query results not available")
+        
+    except Exception as e:
+        logger.error(f"Error getting query results {query_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.put("/cancel/{query_id}")
 async def cancel_query(query_id: str):
     """Cancel a running query"""

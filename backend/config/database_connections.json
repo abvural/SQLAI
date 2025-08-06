@@ -83,7 +83,35 @@
       "last_connected": "2025-08-06T13:27:42.450039",
       "schema_analyzed": false,
       "status": "connected"
+    },
+    "4e27991f-8d54-435f-9103-c6f33b63f0b3": {
+      "id": "4e27991f-8d54-435f-9103-c6f33b63f0b3",
+      "name": "Test Database",
+      "host": "172.17.12.76",
+      "port": 5432,
+      "database": "postgres",
+      "username": "myuser",
+      "password": "Z0FBQUFBQm9rMklWd0Z0SEtKQkRNT0RUa2ZOcEZEMlBhUHFTckx4SGRtOHFGaTNTN2RjcFp5TWZuNjVZbjJMLUVJWGIza29WRUR0aEp6X09ZQVBuN3Fsa2VvYVdZeG0yenc9PQ==",
+      "ssl_mode": "prefer",
+      "created_at": "2025-08-06T14:09:25.006161",
+      "last_connected": "2025-08-06T14:10:22.979768",
+      "schema_analyzed": false,
+      "status": "connected"
+    },
+    "29f76a6e-ada9-4d9e-9b64-f3f65658e7c2": {
+      "id": "29f76a6e-ada9-4d9e-9b64-f3f65658e7c2",
+      "name": "Test Database Schema",
+      "host": "172.17.12.76",
+      "port": 5432,
+      "database": "postgres",
+      "username": "myuser",
+      "password": "Z0FBQUFBQm9rMnBYcDZRcmVkSEtGVWx3cDd5NTdwTl9VQ3hCSHo2Q2tJQlhCM2RoSUlXelNSVDNxcUhXM0xBTFZQaXBCSjNQaWhkekVyc0ZnMTZpOUhkOEFKVW13aDdFOFE9PQ==",
+      "ssl_mode": "prefer",
+      "created_at": "2025-08-06T14:44:39.944031",
+      "last_connected": "2025-08-06T14:45:04.058232",
+      "schema_analyzed": false,
+      "status": "connected"
     }
   },
-  "updated_at": "2025-08-06T13:27:42.450069"
+  "updated_at": "2025-08-06T14:45:04.058295"
 }

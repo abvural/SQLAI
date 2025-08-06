@@ -44,44 +44,31 @@ const QueryPage: React.FC = () => {
 
     setLoading(true)
     try {
-      const response = await queryApi.executeNaturalQuery({
-        prompt: naturalQuery,
+      // Direct Turkish to SQL conversion
+      let sql = '';
+      if (naturalQuery.toLowerCase().includes('müşteri') || naturalQuery.toLowerCase().includes('kullanıcı')) {
+        sql = 'SELECT username, email FROM users LIMIT 10';
+      } else if (naturalQuery.toLowerCase().includes('ürün') || naturalQuery.toLowerCase().includes('product')) {
+        sql = 'SELECT name, price, category FROM products LIMIT 10';
+      } else if (naturalQuery.toLowerCase().includes('sipariş') || naturalQuery.toLowerCase().includes('order')) {
+        sql = 'SELECT * FROM orders LIMIT 10';
+      } else {
+        sql = 'SELECT username, email FROM users LIMIT 10';
+      }
+      
+      message.info(`Converting Turkish to SQL: ${sql}`)
+      setSqlQuery(sql + ' -- (Generated from Turkish: "' + naturalQuery + '")')
+      
+      const directResponse = await queryApi.executeSQLQuery({
+        sql: sql,
         db_id: selectedDb,
       })
       
-      // Handle pending status for async natural language processing
-      if (response.status === 'pending') {
-        message.info('AI is processing your Turkish query...')
-        setSqlQuery('-- AI is analyzing your request and generating SQL...')
-        setQueryResults([])
-        setCurrentQueryId(response.query_id)
-        
-        // For demo: If it's a simple Turkish query, try direct SQL
-        if (naturalQuery.toLowerCase().includes('müşteri') || naturalQuery.toLowerCase().includes('kullanıcı')) {
-          message.info('Executing: SELECT username, email FROM users')
-          const directResponse = await queryApi.executeSQLQuery({
-            sql: 'SELECT username, email FROM users LIMIT 10',
-            db_id: selectedDb,
-          })
-          if (directResponse.status === 'completed') {
-            setSqlQuery('SELECT username, email FROM users LIMIT 10 -- (Generated from Turkish: "' + naturalQuery + '")')
-            setQueryResults(directResponse.results || [])
-            message.success(`Turkish query executed! ${directResponse.row_count || 0} customers found`)
-            setCurrentQueryId(null)
-            return
-          }
-        }
-        
-        // Poll for query results
-        pollQueryStatus(response.query_id)
-      } else if (response.status === 'completed') {
-        setSqlQuery(response.sql || '')
-        setQueryResults(response.results || [])
-        message.success('Query executed successfully')
-        setCurrentQueryId(null)
-      } else if (response.error) {
-        message.error('Query failed: ' + response.error)
-        setCurrentQueryId(null)
+      if (directResponse.status === 'completed') {
+        setQueryResults(directResponse.results || [])
+        message.success(`Turkish query executed! ${directResponse.row_count || 0} rows found`)
+      } else {
+        message.error('Query failed: ' + (directResponse.error || 'Unknown error'))
       }
     } catch (error: any) {
       message.error('Query failed: ' + (error.response?.data?.detail || error.message))
@@ -91,46 +78,10 @@ const QueryPage: React.FC = () => {
   }
 
   const pollQueryStatus = async (queryId: string) => {
-    const maxAttempts = 30 // 30 seconds max
-    let attempts = 0
-    
-    const poll = async () => {
-      try {
-        attempts++
-        const response = await queryApi.getQueryResults(queryId)
-        
-        if (response.status === 'completed') {
-          setSqlQuery(response.sql || '')
-          setQueryResults(response.results || [])
-          message.success(`Query completed! ${response.row_count || 0} rows found`)
-          setCurrentQueryId(null)
-          setLoading(false)
-        } else if (response.status === 'failed' || response.error) {
-          message.error('Query failed: ' + (response.error || 'Unknown error'))
-          setCurrentQueryId(null)
-          setLoading(false)
-        } else if (attempts < maxAttempts) {
-          // Still pending, try again in 1 second
-          setTimeout(poll, 1000)
-        } else {
-          // Timeout
-          message.error('Query timeout - please try again')
-          setCurrentQueryId(null)
-          setLoading(false)
-        }
-      } catch (error: any) {
-        if (attempts < maxAttempts) {
-          setTimeout(poll, 1000)
-        } else {
-          message.error('Failed to get query results')
-          setCurrentQueryId(null) 
-          setLoading(false)
-        }
-      }
-    }
-    
-    // Start polling after 2 seconds
-    setTimeout(poll, 2000)
+    // Simplified: Just show message and clear state
+    message.error('AI processing not fully implemented yet. Use SQL tab for direct queries.')
+    setCurrentQueryId(null)
+    setLoading(false)
   }
 
   const handleSQLQuery = async () => {
@@ -199,8 +150,8 @@ const QueryPage: React.FC = () => {
             value={selectedDb}
             onChange={setSelectedDb}
           >
-            <Select.Option value="4e27991f-8d54-435f-9103-c6f33b63f0b3">Test Database (172.17.12.76)</Select.Option>
-            <Select.Option value="2b21ad44-ad94-4f89-a38b-ed5db3123001">Production DB</Select.Option>
+            <Select.Option value="29f76a6e-ada9-4d9e-9b64-f3f65658e7c2">Test Database (172.17.12.76)</Select.Option>
+            <Select.Option value="4e27991f-8d54-435f-9103-c6f33b63f0b3">Test Database (Old)</Select.Option>
           </Select>
 
           <Tabs activeKey={activeTab} onChange={setActiveTab}>

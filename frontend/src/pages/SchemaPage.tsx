@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { 
   Card, 
   Select, 
@@ -8,22 +8,62 @@ import {
   Descriptions,
   Tag,
   Empty,
-  Spin
+  Spin,
+  message
 } from 'antd'
 import {
   TableOutlined,
   NodeIndexOutlined,
   ReloadOutlined
 } from '@ant-design/icons'
+import { schemaApi } from '../services/api'
 
 const SchemaPage: React.FC = () => {
-  const [selectedDb, setSelectedDb] = useState<string>('')
+  const [selectedDb, setSelectedDb] = useState<string>('29f76a6e-ada9-4d9e-9b64-f3f65658e7c2')
   const [selectedTable, setSelectedTable] = useState<string>('')
   const [loading, setLoading] = useState(false)
+  const [tables, setTables] = useState<any[]>([])
+  const [columns, setColumns] = useState<any[]>([])
+  const [tableDetails, setTableDetails] = useState<any>(null)
 
-  // Mock data - will be replaced with API calls
-  const tables = []
-  const columns = []
+  // Load tables when database is selected
+  useEffect(() => {
+    if (selectedDb) {
+      loadTables()
+    }
+  }, [selectedDb])
+
+  // Load table details when table is selected
+  useEffect(() => {
+    if (selectedDb && selectedTable) {
+      loadTableDetails()
+    }
+  }, [selectedDb, selectedTable])
+
+  const loadTables = async () => {
+    setLoading(true)
+    try {
+      const response = await schemaApi.getTables(selectedDb)
+      setTables(response)
+      message.success(`Loaded ${response.length} tables`)
+    } catch (error: any) {
+      message.error('Failed to load tables: ' + (error.response?.data?.detail || error.message))
+      setTables([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const loadTableDetails = async () => {
+    try {
+      const response = await schemaApi.getTableDetails(selectedDb, selectedTable)
+      setTableDetails(response)
+      setColumns(response.columns || [])
+    } catch (error: any) {
+      message.error('Failed to load table details: ' + (error.response?.data?.detail || error.message))
+      setColumns([])
+    }
+  }
 
   const tableColumns = [
     {
@@ -62,8 +102,8 @@ const SchemaPage: React.FC = () => {
     },
     {
       title: 'Data Type',
-      dataIndex: 'data_type',
-      key: 'data_type',
+      dataIndex: 'type',
+      key: 'type',
       render: (type: string) => <Tag>{type}</Tag>,
     },
     {
@@ -102,8 +142,8 @@ const SchemaPage: React.FC = () => {
             value={selectedDb}
             onChange={setSelectedDb}
           >
-            {/* TODO: Load databases dynamically */}
-            <Select.Option value="db1">Test Database</Select.Option>
+            <Select.Option value="29f76a6e-ada9-4d9e-9b64-f3f65658e7c2">Test Database (172.17.12.76)</Select.Option>
+            <Select.Option value="4e27991f-8d54-435f-9103-c6f33b63f0b3">Test Database (Old)</Select.Option>
           </Select>
 
           {selectedDb && (
@@ -115,7 +155,8 @@ const SchemaPage: React.FC = () => {
                   <Button 
                     icon={<ReloadOutlined />} 
                     size="small"
-                    onClick={() => {/* TODO: Refresh tables */}}
+                    onClick={loadTables}
+                    loading={loading}
                   >
                     Refresh
                   </Button>
@@ -138,15 +179,15 @@ const SchemaPage: React.FC = () => {
                 )}
               </Card>
 
-              {selectedTable && (
+              {selectedTable && tableDetails && (
                 <Card title={`Table: ${selectedTable}`} size="small">
                   <Space direction="vertical" style={{ width: '100%' }} size="middle">
                     <Descriptions bordered size="small">
-                      <Descriptions.Item label="Schema">public</Descriptions.Item>
-                      <Descriptions.Item label="Row Count">0</Descriptions.Item>
-                      <Descriptions.Item label="Size">0 KB</Descriptions.Item>
-                      <Descriptions.Item label="Created">-</Descriptions.Item>
-                      <Descriptions.Item label="Modified">-</Descriptions.Item>
+                      <Descriptions.Item label="Schema">{tableDetails.schema || 'public'}</Descriptions.Item>
+                      <Descriptions.Item label="Row Count">{tableDetails.row_count || 0}</Descriptions.Item>
+                      <Descriptions.Item label="Size">{tableDetails.size || '0 KB'}</Descriptions.Item>
+                      <Descriptions.Item label="Indexes">{tableDetails.indexes?.length || 0}</Descriptions.Item>
+                      <Descriptions.Item label="Constraints">{tableDetails.constraints?.length || 0}</Descriptions.Item>
                     </Descriptions>
 
                     <div>
