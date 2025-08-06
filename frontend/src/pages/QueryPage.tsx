@@ -47,9 +47,19 @@ const QueryPage: React.FC = () => {
         prompt: naturalQuery,
         db_id: selectedDb,
       })
-      setSqlQuery(response.sql || '')
-      setQueryResults(response.results)
-      message.success('Query executed successfully')
+      
+      // Handle pending status for async natural language processing
+      if (response.status === 'pending') {
+        message.info('Processing your natural language query... This may take a few moments.')
+        setSqlQuery(response.sql || 'Query is being processed by AI...')
+        setQueryResults([])
+      } else if (response.status === 'completed') {
+        setSqlQuery(response.sql || '')
+        setQueryResults(response.results || [])
+        message.success('Query executed successfully')
+      } else if (response.error) {
+        message.error('Query failed: ' + response.error)
+      }
     } catch (error: any) {
       message.error('Query failed: ' + (error.response?.data?.detail || error.message))
     } finally {
@@ -73,8 +83,14 @@ const QueryPage: React.FC = () => {
         sql: sqlQuery,
         db_id: selectedDb,
       })
-      setQueryResults(response.results)
-      message.success('Query executed successfully')
+      
+      if (response.status === 'completed') {
+        setQueryResults(response.results || [])
+        message.success(`Query executed successfully! ${response.row_count || 0} rows returned in ${(response.execution_time * 1000).toFixed(0)}ms`)
+      } else if (response.error) {
+        message.error('Query failed: ' + response.error)
+        setQueryResults([])
+      }
     } catch (error: any) {
       message.error('Query failed: ' + (error.response?.data?.detail || error.message))
     } finally {
@@ -117,8 +133,8 @@ const QueryPage: React.FC = () => {
             value={selectedDb}
             onChange={setSelectedDb}
           >
-            <Select.Option value="test_db">Test Database (172.17.12.76)</Select.Option>
-            <Select.Option value="prod_db">Production Database</Select.Option>
+            <Select.Option value="4e27991f-8d54-435f-9103-c6f33b63f0b3">Test Database (172.17.12.76)</Select.Option>
+            <Select.Option value="2b21ad44-ad94-4f89-a38b-ed5db3123001">Production DB</Select.Option>
           </Select>
 
           <Tabs activeKey={activeTab} onChange={setActiveTab}>
