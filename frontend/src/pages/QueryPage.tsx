@@ -117,8 +117,8 @@ const QueryPage: React.FC = () => {
             value={selectedDb}
             onChange={setSelectedDb}
           >
-            {/* TODO: Load databases dynamically */}
-            <Select.Option value="db1">Test Database</Select.Option>
+            <Select.Option value="test_db">Test Database (172.17.12.76)</Select.Option>
+            <Select.Option value="prod_db">Production Database</Select.Option>
           </Select>
 
           <Tabs activeKey={activeTab} onChange={setActiveTab}>
@@ -126,7 +126,12 @@ const QueryPage: React.FC = () => {
               <Space direction="vertical" style={{ width: '100%' }} size="middle">
                 <TextArea
                   rows={4}
-                  placeholder="Enter your query in natural language... e.g., 'Show me all customers who placed orders last month'"
+                  placeholder="Enter your query in natural language... 
+Examples:
+• Müşterileri listele (List customers)
+• En çok sipariş veren müşteri (Customer with most orders)  
+• Son bir aydaki siparişler (Orders from last month)
+• Toplam satış tutarı (Total sales amount)"
                   value={naturalQuery}
                   onChange={(e) => setNaturalQuery(e.target.value)}
                 />
