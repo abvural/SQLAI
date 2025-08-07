@@ -529,3 +529,79 @@ class CacheService:
             
             session.commit()
             logger.info(f"Cleaned up {deleted_queries} old queries and {deleted_insights} expired insights")
+    
+    def set_cache(self, key: str, data: Dict[str, Any], cache_type: str, ttl: int = 86400) -> None:
+        """
+        Store data in cache using AI insights as storage mechanism
+        
+        Args:
+            key: Cache key
+            data: Data to store
+            cache_type: Type of cache entry
+            ttl: Time to live in seconds
+        """
+        try:
+            # Use AI insights as a generic cache storage
+            with get_session() as session:
+                # Remove existing entry with same key
+                session.query(AIInsight).filter(
+                    and_(
+                        AIInsight.target_name == key,
+                        AIInsight.insight_type == f'cache_{cache_type}'
+                    )
+                ).delete()
+                
+                # Calculate expiry
+                expires_at = datetime.utcnow() + timedelta(seconds=ttl)
+                
+                # Create new cache entry
+                insight = AIInsight(
+                    database_id='system',
+                    target_type='cache',
+                    target_name=key,
+                    insight_type=f'cache_{cache_type}',
+                    title=f'Cache: {cache_type}',
+                    description=f'Cached data for {key}',
+                    severity='info',
+                    confidence=1.0,
+                    extra_data=data,
+                    expires_at=expires_at
+                )
+                session.add(insight)
+                session.commit()
+                
+        except Exception as e:
+            logger.error(f"Error setting cache for {key}: {e}")
+    
+    def get_cache(self, key: str, cache_type: str) -> Optional[Dict[str, Any]]:
+        """
+        Get data from cache
+        
+        Args:
+            key: Cache key
+            cache_type: Type of cache entry
+            
+        Returns:
+            Cached data or None if not found/expired
+        """
+        try:
+            with get_session() as session:
+                insight = session.query(AIInsight).filter(
+                    and_(
+                        AIInsight.target_name == key,
+                        AIInsight.insight_type == f'cache_{cache_type}',
+                        or_(
+                            AIInsight.expires_at.is_(None),
+                            AIInsight.expires_at > datetime.utcnow()
+                        )
+                    )
+                ).first()
+                
+                if insight and insight.extra_data:
+                    return insight.extra_data
+                    
+                return None
+                
+        except Exception as e:
+            logger.error(f"Error getting cache for {key}: {e}")
+            return None

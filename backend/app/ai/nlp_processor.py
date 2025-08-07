@@ -1,29 +1,90 @@
 """
-Natural Language Processor with Sentence Transformers
-Handles semantic similarity and text embeddings
+Enhanced Natural Language Processor with spaCy and TF-IDF
+Handles Turkish language processing and semantic similarity
+Now with optional Local LLM support via Ollama
 """
 import logging
 import re
 import unicodedata
+import os
+import asyncio
 from typing import Dict, List, Optional, Tuple, Any
-from sentence_transformers import SentenceTransformer
+# from sentence_transformers import SentenceTransformer  # DISABLED: Keras 3 compatibility issue
 import numpy as np
 from functools import lru_cache
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+try:
+    import spacy
+    from spacy.lang.tr import Turkish
+    SPACY_AVAILABLE = True
+except ImportError:
+    SPACY_AVAILABLE = False
+    logging.warning("spaCy not available. Using basic Turkish processing.")
 
 logger = logging.getLogger(__name__)
 
 class NLPProcessor:
     """Natural Language Processing for SQL query generation"""
     
-    def __init__(self, model_name: str = "paraphrase-multilingual-MiniLM-L12-v2"):
+    def __init__(self, model_name: str = "tr_core_news_sm", db_id: Optional[str] = None):
         """
-        Initialize NLP processor with multilingual model
+        Initialize enhanced NLP processor with spaCy Turkish model and optional LLM
         
         Args:
-            model_name: Sentence transformer model (supports Turkish)
+            model_name: spaCy Turkish model name
+            db_id: Database ID for schema context (optional)
         """
-        logger.info(f"Loading sentence transformer model: {model_name}")
-        self.model = SentenceTransformer(model_name)
+        logger.info(f"Initializing enhanced lightweight NLP processor with Turkish AI")
+        
+        # Check if LLM is enabled
+        self.use_llm = os.getenv('USE_LOCAL_LLM', 'false').lower() == 'true'
+        self.llm_service = None
+        self.schema_context = None
+        self.db_id = db_id
+        
+        if self.use_llm:
+            try:
+                from app.services.llm_service import LocalLLMService
+                from app.services.schema_context_service import SchemaContextService
+                
+                self.llm_service = LocalLLMService(db_id)
+                if self.db_id:
+                    self.schema_context = SchemaContextService(self.db_id)
+                    logger.info(f"LLM integration enabled with database: {self.db_id}")
+                else:
+                    logger.info("LLM integration enabled without specific database context")
+            except Exception as e:
+                logger.warning(f"Failed to initialize LLM service: {e}")
+                self.use_llm = False
+        
+        # Initialize spaCy Turkish model
+        self.nlp = None
+        if SPACY_AVAILABLE:
+            try:
+                self.nlp = spacy.load(model_name)
+                logger.info(f"Loaded spaCy Turkish model: {model_name}")
+            except OSError:
+                logger.warning(f"Turkish model {model_name} not found. Using basic Turkish nlp.")
+                try:
+                    self.nlp = Turkish()
+                    logger.info("Loaded basic Turkish language class")
+                except Exception as e:
+                    logger.warning(f"Failed to load basic Turkish class: {e}")
+                    self.nlp = None
+        
+        # Initialize TF-IDF vectorizer for semantic similarity
+        self.tfidf_vectorizer = TfidfVectorizer(
+            analyzer='word',
+            token_pattern=r'\b[a-zA-Z\u011f\u00fc\u015f\u0131\u00f6\u00e7\u011e\u00dc\u015eI\u00d6\u00c7]+\b',  # Turkish character support
+            stop_words=self._get_turkish_stop_words(),
+            max_features=1000,
+            ngram_range=(1, 2),  # Use 1-2 grams for better context
+            lowercase=True
+        )
+        
+        # Knowledge base for query patterns and their SQL templates
+        self.query_templates = {}
         
         # Turkish character mapping
         self.turkish_chars = {
@@ -80,11 +141,60 @@ class NLPProcessor:
             'tedarikci': ['supplier', 'suppliers', 'tedarikci', 'tedarikciler', 'saglayici']
         }
         
-        logger.info("NLP Processor initialized successfully")
+        # Initialize knowledge base
+        self._initialize_query_knowledge_base()
+        
+        logger.info("Enhanced NLP Processor with Turkish AI initialized successfully")
+    
+    def _get_turkish_stop_words(self) -> List[str]:
+        """Get Turkish stop words"""
+        return [
+            've', 'ile', 'bir', 'bu', 'şu', 'o', 'olan', 'olarak', 've', 'veya', 'ya', 'ki', 
+            'de', 'da', 'den', 'dan', 'deki', 'daki', 'nin', 'nın', 'nun', 'nün',
+            'için', 'gibi', 'kadar', 'daha', 'en', 'çok', 'az', 'var', 'yok'
+        ]
+    
+    def _initialize_query_knowledge_base(self):
+        """Initialize knowledge base with query patterns and templates"""
+        self.query_templates = {
+            # User queries
+            'list_users': {
+                'patterns': ['kullanıcılar', 'kullanıcı listesi', 'tüm kullanıcılar', 'users', 'list users'],
+                'sql_template': 'SELECT * FROM users',
+                'confidence_base': 0.9
+            },
+            'count_users': {
+                'patterns': ['kaç kullanıcı', 'kullanıcı sayısı', 'count users', 'user count'],
+                'sql_template': 'SELECT COUNT(*) as user_count FROM users',
+                'confidence_base': 0.9
+            },
+            'user_by_name': {
+                'patterns': ['ismi {} olan', 'adı {} olan', '{} isimli', '{} adlı', 'named {}', 'user {}'],
+                'sql_template': 'SELECT * FROM users WHERE username = \'{}\'',
+                'confidence_base': 0.95
+            },
+            'user_search': {
+                'patterns': ['{} içeren', '{} olan kullanıcılar', 'find {}', 'search {}'],
+                'sql_template': 'SELECT username, email FROM users WHERE username LIKE \'%{}%\' LIMIT 10',
+                'confidence_base': 0.85
+            },
+            # Product queries
+            'list_products': {
+                'patterns': ['ürünler', 'ürün listesi', 'tüm ürünler', 'products', 'list products'],
+                'sql_template': 'SELECT * FROM products',
+                'confidence_base': 0.9
+            },
+            # Order queries
+            'list_orders': {
+                'patterns': ['siparişler', 'sipariş listesi', 'orders', 'list orders'],
+                'sql_template': 'SELECT * FROM orders',
+                'confidence_base': 0.9
+            }
+        }
     
     def normalize_turkish(self, text: str) -> str:
         """
-        Normalize Turkish text for better matching
+        Enhanced Turkish text normalization using spaCy if available
         
         Args:
             text: Input text with Turkish characters
@@ -92,18 +202,39 @@ class NLPProcessor:
         Returns:
             Normalized text
         """
+        if not text:
+            return ""
+            
         # Convert to lowercase
-        text = text.lower()
+        text = text.lower().strip()
+        
+        # Use spaCy with fallback to basic normalization
+        try:
+            if self.nlp and hasattr(self.nlp, '__call__'):
+                doc = self.nlp(text)
+                # Extract tokens carefully - Turkish class has issues with is_stop
+                tokens = []
+                stop_words = set(self._get_turkish_stop_words())
+                for token in doc:
+                    token_text = token.text.strip().lower()
+                    # Use our own stop word list instead of spaCy's which may not work for Turkish
+                    if (token_text not in stop_words and not token.is_punct and 
+                        not token.is_space and len(token_text) > 1):
+                        tokens.append(token.lemma_ if hasattr(token, 'lemma_') and token.lemma_ else token_text)
+                normalized = ' '.join(tokens) if tokens else text
+            else:
+                raise Exception("spaCy not available")
+        except Exception as e:
+            # Reliable fallback normalization
+            stop_words = set(self._get_turkish_stop_words())
+            words = text.split()
+            filtered_words = [word for word in words if word not in stop_words and len(word) > 1]
+            normalized = ' '.join(filtered_words) if filtered_words else text
         
         # Replace Turkish keywords with SQL equivalents
         for turkish, sql in self.turkish_keywords.items():
-            if turkish in text:
-                text = text.replace(turkish, f"[{sql}]")
-        
-        # Normalize Turkish characters for matching (but keep originals for display)
-        normalized = text
-        for tr_char, latin_char in self.turkish_chars.items():
-            normalized = normalized.replace(tr_char, latin_char)
+            if turkish in normalized:
+                normalized = normalized.replace(turkish, f"[{sql}]")
         
         # Remove extra spaces
         normalized = ' '.join(normalized.split())
@@ -167,20 +298,60 @@ class NLPProcessor:
     @lru_cache(maxsize=1000)
     def get_embedding(self, text: str) -> np.ndarray:
         """
-        Get sentence embedding for text (cached)
+        Get TF-IDF embedding for text (cached)
         
         Args:
             text: Input text
             
         Returns:
-            Embedding vector
+            TF-IDF embedding vector
         """
         normalized = self.normalize_turkish(text)
-        return self.model.encode(normalized, convert_to_numpy=True)
+        if not normalized:
+            return np.zeros(100)  # Default empty vector
+            
+        # Try to use TF-IDF if we have training data
+        try:
+            # Create a fresh vectorizer for each call to avoid state issues
+            vectorizer = TfidfVectorizer(
+                analyzer='word',
+                token_pattern=r'\b[a-zA-Z\u011f\u00fc\u015f\u0131\u00f6\u00e7\u011e\u00dc\u015eI\u00d6\u00c7]+\b',
+                lowercase=True,
+                max_features=100,
+                ngram_range=(1, 2)
+            )
+            
+            # Combine all template patterns as training data
+            all_patterns = []
+            for template_info in self.query_templates.values():
+                all_patterns.extend(template_info['patterns'])
+            
+            # Add some basic Turkish words if patterns are empty
+            if not all_patterns:
+                all_patterns = ['kullanıcı', 'user', 'listele', 'list', 'kaç', 'count']
+            
+            all_patterns.append(normalized)
+            
+            # Fit and transform
+            tfidf_matrix = vectorizer.fit_transform(all_patterns)
+            # Return the last vector (our query)
+            result = tfidf_matrix[-1].toarray().flatten()
+            return result if len(result) > 0 else np.zeros(100)
+            
+        except Exception as e:
+            logger.warning(f"TF-IDF embedding failed, using fallback: {e}")
+            # Fallback: simple hash-based embedding with better distribution
+            import hashlib
+            text_hash = int(hashlib.md5(normalized.encode()).hexdigest(), 16)
+            # Create a better distributed vector
+            vector = []
+            for i in range(10):
+                vector.append((text_hash >> (i * 4)) & 0xFF)
+            return np.array(vector, dtype=float)
     
     def calculate_similarity(self, text1: str, text2: str) -> float:
         """
-        Calculate semantic similarity between two texts
+        Calculate semantic similarity between two texts using improved methods
         
         Args:
             text1: First text
@@ -189,15 +360,223 @@ class NLPProcessor:
         Returns:
             Similarity score (0-1)
         """
-        embedding1 = self.get_embedding(text1)
-        embedding2 = self.get_embedding(text2)
+        # Normalize both texts
+        norm1 = self.normalize_turkish(text1)
+        norm2 = self.normalize_turkish(text2)
         
-        # Cosine similarity
-        similarity = np.dot(embedding1, embedding2) / (
-            np.linalg.norm(embedding1) * np.linalg.norm(embedding2)
-        )
+        if not norm1 or not norm2:
+            return 0.0
         
-        return float(similarity)
+        # Use multiple similarity metrics and combine them
+        similarities = []
+        
+        # 1. Exact word match ratio
+        words1 = set(norm1.split())
+        words2 = set(norm2.split())
+        if words1 and words2:
+            word_similarity = len(words1 & words2) / max(len(words1), len(words2))
+            similarities.append(word_similarity * 0.4)  # 40% weight
+        
+        # 2. TF-IDF cosine similarity
+        try:
+            tfidf_matrix = self.tfidf_vectorizer.fit_transform([norm1, norm2])
+            cosine_sim = cosine_similarity(tfidf_matrix[0:1], tfidf_matrix[1:2])[0][0]
+            similarities.append(cosine_sim * 0.4)  # 40% weight
+        except:
+            similarities.append(0.0)
+        
+        # 3. Character-level similarity for names
+        import difflib
+        char_similarity = difflib.SequenceMatcher(None, norm1, norm2).ratio()
+        similarities.append(char_similarity * 0.2)  # 20% weight
+        
+        return float(sum(similarities))
+    
+    async def generate_sql_with_llm(self, query: str, schema_info: Dict[str, Any] = None) -> Tuple[Optional[str], float]:
+        """
+        Generate SQL using Local LLM (Mistral + SQLCoder)
+        
+        Args:
+            query: Natural language query
+            schema_info: Database schema information (optional)
+            
+        Returns:
+            Tuple of (generated_sql, confidence_score)
+        """
+        if not self.llm_service:
+            logger.warning("LLM service not available, falling back to pattern matching")
+            return self.generate_intelligent_sql_pattern(query, schema_info)
+        
+        try:
+            # Get relevant schema context
+            schema_context = ""
+            if self.schema_context and schema_info:
+                # Index schema if not already indexed
+                self.schema_context.index_schema(schema_info)
+                # Get relevant context for the query
+                schema_context = self.schema_context.get_relevant_context(query, limit=20)
+            elif schema_info:
+                # Build basic context without ChromaDB
+                schema_context = self._build_basic_schema_context(schema_info)
+            
+            # Step 1: Understand Turkish query using Mistral
+            intent = await self.llm_service.understand_turkish(query)
+            logger.info(f"LLM Turkish understanding: {intent}")
+            
+            # Step 2: Generate SQL using SQLCoder with adaptive learning context
+            sql = await self.llm_service.generate_sql(intent, schema_context, query)
+            
+            # Step 3: Calculate confidence based on intent clarity
+            confidence = 0.95  # High confidence for LLM
+            if intent.get('intent') == 'select' and not intent.get('filters'):
+                confidence = 0.85  # Lower confidence for vague queries
+            elif not intent.get('entities'):
+                confidence = 0.75  # Even lower if no entities detected
+            
+            # Step 4: Update schema context with successful query
+            if sql and self.schema_context:
+                self.schema_context.update_with_query_results(query, sql, True)
+            
+            # Step 5: Store successful result for adaptive learning
+            if sql and confidence > 0.7:
+                await self.llm_service.learn_from_success(query, sql, confidence, True)
+            
+            return sql, confidence
+            
+        except Exception as e:
+            logger.error(f"Error generating SQL with LLM: {e}")
+            # Fallback to pattern matching
+            return self.generate_intelligent_sql_pattern(query, schema_info)
+    
+    def generate_intelligent_sql(self, query: str, schema_info: Dict[str, Any] = None) -> Tuple[Optional[str], float]:
+        """
+        Generate SQL using intelligent pattern matching and semantic similarity or LLM
+        
+        Args:
+            query: Natural language query
+            schema_info: Database schema information (optional)
+            
+        Returns:
+            Tuple of (generated_sql, confidence_score)
+        """
+        # Use LLM if available
+        if self.use_llm and self.llm_service:
+            try:
+                # Check if we're already in an event loop
+                try:
+                    loop = asyncio.get_running_loop()
+                    # We're in an async context, create a task
+                    import threading
+                    import concurrent.futures
+                    
+                    def run_in_thread():
+                        new_loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(new_loop)
+                        try:
+                            return new_loop.run_until_complete(self.generate_sql_with_llm(query, schema_info))
+                        finally:
+                            new_loop.close()
+                    
+                    with concurrent.futures.ThreadPoolExecutor() as executor:
+                        future = executor.submit(run_in_thread)
+                        result = future.result(timeout=30)
+                    return result
+                    
+                except RuntimeError:
+                    # No running loop, safe to create new one
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    try:
+                        result = loop.run_until_complete(self.generate_sql_with_llm(query, schema_info))
+                        return result
+                    finally:
+                        loop.close()
+                        
+            except Exception as e:
+                logger.error(f"Error with LLM generation: {e}")
+                # Return empty result instead of falling back to patterns
+                return None, 0.0
+        
+        # If LLM is not available, return empty result
+        logger.warning("LLM not available and pattern matching disabled")
+        return None, 0.0
+    
+    def generate_intelligent_sql_pattern(self, query: str, schema_info: Dict[str, Any] = None) -> Tuple[Optional[str], float]:
+        """
+        Generate SQL using intelligent pattern matching and semantic similarity (original method)
+        
+        Args:
+            query: Natural language query
+            schema_info: Database schema information (optional)
+            
+        Returns:
+            Tuple of (generated_sql, confidence_score)
+        """
+        normalized_query = self.normalize_turkish(query)
+        best_match = None
+        best_confidence = 0.0
+        best_sql = None
+        
+        # Extract potential entity names from query
+        query_words = normalized_query.split()
+        potential_names = []
+        
+        # Look for Turkish name patterns
+        import re
+        name_patterns = [
+            r'ismi\s+([a-zA-ZğüşıöçĞÜŞIÖÇ_]+)',
+            r'adı\s+([a-zA-ZğüşıöçĞÜŞIÖÇ_]+)', 
+            r'([a-zA-ZğüşıöçĞÜŞIÖÇ_]+)\s+(?:isimli|adlı)',
+            r'named\s+([a-zA-Z_]+)',
+            r'user\s+([a-zA-Z_]+)'
+        ]
+        
+        for pattern in name_patterns:
+            match = re.search(pattern, query.lower())
+            if match:
+                potential_names.append(match.group(1))
+        
+        # Match against query templates
+        for template_key, template_info in self.query_templates.items():
+            for pattern in template_info['patterns']:
+                # Handle parameterized patterns
+                if '{}' in pattern:
+                    if potential_names:
+                        for name in potential_names:
+                            filled_pattern = pattern.format(name)
+                            similarity = self.calculate_similarity(normalized_query, filled_pattern)
+                            confidence = similarity * template_info['confidence_base']
+                            
+                            if confidence > best_confidence:
+                                best_confidence = confidence
+                                best_match = template_key
+                                best_sql = template_info['sql_template'].format(name)
+                else:
+                    # Direct pattern matching
+                    similarity = self.calculate_similarity(normalized_query, pattern)
+                    confidence = similarity * template_info['confidence_base']
+                    
+                    if confidence > best_confidence:
+                        best_confidence = confidence
+                        best_match = template_key
+                        best_sql = template_info['sql_template']
+        
+        # If no good match, try fuzzy matching with basic patterns
+        if best_confidence < 0.5:
+            basic_patterns = {
+                'kullanıcı': ('SELECT * FROM users', 0.7),
+                'user': ('SELECT * FROM users', 0.7),
+                'ürün': ('SELECT * FROM products', 0.7),
+                'product': ('SELECT * FROM products', 0.7),
+                'sipariş': ('SELECT * FROM orders', 0.7),
+                'order': ('SELECT * FROM orders', 0.7)
+            }
+            
+            for pattern, (sql, base_conf) in basic_patterns.items():
+                if pattern in normalized_query:
+                    return sql, base_conf
+        
+        return best_sql, best_confidence
     
     def find_best_match(self, query: str, candidates: List[str], 
                        threshold: float = 0.3) -> Tuple[Optional[str], float]:
@@ -395,6 +774,32 @@ class NLPProcessor:
         conditions = []
         query_lower = query.lower()
         
+        # Name-based filters (Turkish specific patterns)
+        import re
+        name_patterns = [
+            (r'ismi\s+([a-zA-ZğüşıöçĞÜŞIÖÇ]+)\s+olan', '='),
+            (r'adı\s+([a-zA-ZğüşıöçĞÜŞIÖÇ]+)\s+olan', '='),
+            (r'ismi\s+([a-zA-ZğüşıöçĞÜŞIÖÇ]+)', '='),
+            (r'adı\s+([a-zA-ZğüşıöçĞÜŞIÖÇ]+)', '='),
+            (r'([a-zA-ZğüşıöçĞÜŞIÖÇ]+)\s+isimli', '='),
+            (r'([a-zA-ZğüşıöçĞÜŞIÖÇ]+)\s+adlı', '='),
+            (r'name\s*=\s*["\']([^"\']+)["\']', '='),
+            (r'name\s+is\s+([a-zA-Z]+)', '=')
+        ]
+        
+        for pattern, operator in name_patterns:
+            match = re.search(pattern, query_lower)
+            if match:
+                name_value = match.group(1).strip()
+                conditions.append({
+                    'type': 'name',
+                    'field': 'name',  # Default field name
+                    'operator': operator,
+                    'value': name_value.title(),  # Capitalize name
+                    'raw_value': f"'{name_value.title()}'"
+                })
+                break  # Only match the first name pattern
+        
         # Date filters
         if 'bugün' in query_lower:
             conditions.append({
@@ -459,3 +864,48 @@ class NLPProcessor:
                 })
         
         return conditions
+    
+    def _build_basic_schema_context(self, schema_info: Dict[str, Any]) -> str:
+        """
+        Build basic schema context string without ChromaDB
+        
+        Args:
+            schema_info: Database schema information
+            
+        Returns:
+            Formatted schema context string
+        """
+        lines = ["Database Schema:", "=" * 50]
+        
+        for schema_name, schema_data in schema_info.get('schemas', {}).items():
+            # Add tables
+            for table in schema_data.get('tables', [])[:20]:  # Limit to 20 tables
+                lines.append(f"\nTable: {schema_name}.{table['name']}")
+                lines.append("Columns:")
+                
+                # Add columns
+                for column in table.get('columns', [])[:15]:  # Limit to 15 columns per table
+                    col_type = column['type']
+                    constraints = []
+                    if column.get('is_primary_key'):
+                        constraints.append('PK')
+                    if column.get('is_foreign_key'):
+                        constraints.append('FK')
+                    if not column.get('nullable', True):
+                        constraints.append('NOT NULL')
+                    
+                    constraint_str = f" [{', '.join(constraints)}]" if constraints else ""
+                    lines.append(f"  - {column['name']} ({col_type}){constraint_str}")
+                
+                # Add row count if available
+                if table.get('row_count'):
+                    lines.append(f"Row Count: {table['row_count']}")
+            
+            # Add relationships
+            relationships = schema_data.get('relationships', [])[:10]  # Limit to 10 relationships
+            if relationships:
+                lines.append("\nRelationships:")
+                for rel in relationships:
+                    lines.append(f"  - {rel['from_table']}.{rel['from_column']} -> {rel['to_table']}.{rel['to_column']}")
+        
+        return "\n".join(lines)

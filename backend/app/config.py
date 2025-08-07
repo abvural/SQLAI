@@ -48,6 +48,23 @@ class Settings(BaseSettings):
     chunk_size: int = Field(default=10000, env="CHUNK_SIZE")
     max_result_size: int = Field(default=100000, env="MAX_RESULT_SIZE")
     
+    # LLM Configuration
+    use_local_llm: bool = Field(default=False, env="USE_LOCAL_LLM")
+    ollama_host: str = Field(default="http://localhost:11434", env="OLLAMA_HOST")
+    mistral_model: str = Field(default="mistral:7b-instruct-q4_K_M", env="MISTRAL_MODEL")
+    sqlcoder_model: str = Field(default="sqlcoder", env="SQLCODER_MODEL")
+    llm_timeout: int = Field(default=30, env="LLM_TIMEOUT")
+    max_context_size: int = Field(default=8192, env="MAX_CONTEXT_SIZE")
+    llm_temperature: float = Field(default=0.1, env="LLM_TEMPERATURE")
+    llm_top_p: float = Field(default=0.95, env="LLM_TOP_P")
+    
+    # ChromaDB Configuration
+    chroma_persist_path: str = Field(default="./chroma_db", env="CHROMA_PERSIST_PATH")
+    chroma_collection_prefix: str = Field(default="sqlai_", env="CHROMA_COLLECTION_PREFIX")
+    
+    # Master Key (for compatibility)
+    sqlai_master_key: str = Field(default="sqlai-fixed-master-key-2024-v1", env="SQLAI_MASTER_KEY")
+    
     # CORS Settings
     cors_origins: list = Field(
         default=["http://localhost:3000", "http://localhost:3001"],
@@ -58,5 +75,6 @@ class Settings(BaseSettings):
         env_file = ".env"
         env_file_encoding = "utf-8"
         case_sensitive = False
+        extra = "allow"  # Allow extra fields from .env
 
 settings = Settings()

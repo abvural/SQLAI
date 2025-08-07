@@ -21,15 +21,13 @@ class CredentialManager:
         Initialize the credential manager with a master key
         
         Args:
-            master_key: Master key for encryption. If not provided, generates from environment
+            master_key: Master key for encryption. If not provided, uses fixed key
         """
-        self.master_key = master_key or os.environ.get('SQLAI_MASTER_KEY')
+        # Use fixed master key to ensure consistency across restarts
+        self.master_key = master_key or os.environ.get('SQLAI_MASTER_KEY', 'sqlai-fixed-master-key-2024-v1')
         
-        if not self.master_key:
-            # Generate a new master key if not exists
-            self.master_key = self._generate_master_key()
-            logger.warning("Generated new master key. Store it securely!")
-            logger.info(f"Master key: {self.master_key}")
+        if self.master_key == 'sqlai-fixed-master-key-2024-v1':
+            logger.info("Using fixed master key for credential encryption")
         
         self.cipher = self._create_cipher(self.master_key)
     

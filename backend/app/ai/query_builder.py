@@ -1,8 +1,11 @@
 """
 AI-Powered SQL Query Builder
 Combines NLP, templates, and graph analysis to generate SQL queries
+Now with optional Local LLM support via Ollama
 """
 import logging
+import os
+import asyncio
 from typing import Dict, List, Optional, Tuple, Any
 from dataclasses import dataclass
 import json
@@ -33,15 +36,40 @@ class QueryInterpretation:
 class SQLQueryBuilder:
     """Build SQL queries from natural language"""
     
-    def __init__(self):
-        """Initialize query builder"""
-        self.nlp_processor = NLPProcessor()
+    def __init__(self, db_id: Optional[str] = None):
+        """Initialize query builder
+        
+        Args:
+            db_id: Database ID for LLM context (optional)
+        """
+        # Initialize NLP processor with optional LLM support
+        self.nlp_processor = NLPProcessor(db_id=db_id)
         self.template_system = QueryTemplateSystem()
         self.graph_builder = RelationshipGraphBuilder()
         self.schema_analyzer = SchemaAnalyzer()
         self.cache_service = CacheService()
         
-        logger.info("SQL Query Builder initialized")
+        # Check if LLM is enabled
+        self.use_llm = os.getenv('USE_LOCAL_LLM', 'false').lower() == 'true'
+        self.llm_service = None
+        self.schema_context = None
+        
+        if self.use_llm:
+            try:
+                from app.services.llm_service import LocalLLMService
+                from app.services.schema_context_service import SchemaContextService
+                
+                self.llm_service = LocalLLMService()
+                if db_id:
+                    self.schema_context = SchemaContextService(db_id)
+                    logger.info(f"Query Builder: LLM enabled with database context: {db_id}")
+                else:
+                    logger.info("Query Builder: LLM enabled without specific database")
+            except Exception as e:
+                logger.warning(f"Failed to initialize LLM in query builder: {e}")
+                self.use_llm = False
+        
+        logger.info(f"SQL Query Builder initialized (LLM: {self.use_llm})")
     
     def build_query(self, natural_query: str, db_id: str) -> Dict[str, Any]:
         """
@@ -65,6 +93,15 @@ class SQLQueryBuilder:
                 'query': None
             }
         
+        # Try LLM-based generation first if available
+        if self.use_llm and self.llm_service:
+            llm_result = self._build_query_with_llm(natural_query, db_id, schema_info)
+            if llm_result and llm_result.get('success'):
+                return llm_result
+            else:
+                logger.info("LLM generation failed, falling back to pattern-based approach")
+        
+        # Fallback to pattern-based approach
         # Process natural language
         keywords = self.nlp_processor.extract_keywords(natural_query)
         query_classification = self.nlp_processor.classify_query_type(natural_query)
@@ -112,6 +149,156 @@ class SQLQueryBuilder:
                 for interp in interpretations[1:3]  # Top 3 alternatives
             ] if len(interpretations) > 1 else []
         }
+    
+    def _build_query_with_llm(self, natural_query: str, db_id: str, schema_info: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Build SQL query using Local LLM
+        
+        Args:
+            natural_query: Natural language query
+            db_id: Database connection ID
+            schema_info: Database schema information
+            
+        Returns:
+            Query result with SQL, confidence, and explanations
+        """
+        try:
+            # Initialize schema context if needed
+            if not self.schema_context and db_id:
+                from app.services.schema_context_service import SchemaContextService
+                self.schema_context = SchemaContextService(db_id)
+            
+            # Index schema for vector search
+            if self.schema_context:
+                self.schema_context.index_schema(schema_info)
+                
+                # Get relevant context
+                schema_context = self.schema_context.get_relevant_context(natural_query, limit=20)
+            else:
+                # Build basic context
+                schema_context = self._build_basic_schema_context(schema_info)
+            
+            # Run async LLM generation
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            
+            # Step 1: Understand Turkish query
+            intent = loop.run_until_complete(
+                self.llm_service.understand_turkish(natural_query)
+            )
+            
+            # Step 2: Generate SQL
+            sql = loop.run_until_complete(
+                self.llm_service.generate_sql(intent, schema_context)
+            )
+            
+            loop.close()
+            
+            if not sql:
+                return {
+                    'success': False,
+                    'error': 'LLM could not generate SQL',
+                    'query': None
+                }
+            
+            # Extract tables and columns from intent
+            tables = intent.get('entities', [])
+            columns = intent.get('metrics', [])
+            
+            # Build explanation
+            explanation = self._build_llm_explanation(intent, sql)
+            
+            # Calculate confidence
+            confidence = 0.95  # High confidence for LLM
+            if not intent.get('filters') and intent.get('intent') == 'select':
+                confidence = 0.85
+            elif not tables:
+                confidence = 0.75
+            
+            # Update context with successful query
+            if self.schema_context:
+                self.schema_context.update_with_query_results(natural_query, sql, True)
+            
+            return {
+                'success': True,
+                'sql': sql,
+                'confidence': confidence,
+                'interpretation': {
+                    'tables': tables,
+                    'columns': columns,
+                    'explanation': explanation,
+                    'intent': intent
+                },
+                'llm_generated': True,
+                'alternatives': []  # LLM provides single best query
+            }
+            
+        except Exception as e:
+            logger.error(f"Error building query with LLM: {e}")
+            return {
+                'success': False,
+                'error': str(e),
+                'query': None
+            }
+    
+    def _build_llm_explanation(self, intent: Dict[str, Any], sql: str) -> str:
+        """Build explanation from LLM intent"""
+        parts = []
+        
+        intent_type = intent.get('intent', 'select')
+        entities = intent.get('entities', [])
+        filters = intent.get('filters', [])
+        aggregation = intent.get('aggregation')
+        
+        # Describe the operation
+        if intent_type == 'count':
+            parts.append("Counting records")
+        elif intent_type == 'sum':
+            parts.append("Calculating sum")
+        elif intent_type == 'avg':
+            parts.append("Calculating average")
+        elif intent_type == 'max':
+            parts.append("Finding maximum")
+        elif intent_type == 'min':
+            parts.append("Finding minimum")
+        else:
+            parts.append("Retrieving data")
+        
+        # Add entities
+        if entities:
+            parts.append(f"from {', '.join(entities)}")
+        
+        # Add filters
+        if filters:
+            parts.append(f"with {len(filters)} filter(s)")
+        
+        # Add aggregation
+        if aggregation:
+            parts.append(f"grouped by {aggregation}")
+        
+        return " ".join(parts) + " (Generated by LLM)"
+    
+    def _build_basic_schema_context(self, schema_info: Dict[str, Any]) -> str:
+        """Build basic schema context without ChromaDB"""
+        lines = ["Database Schema:", "=" * 50]
+        
+        for schema_name, schema_data in schema_info.get('schemas', {}).items():
+            for table in schema_data.get('tables', [])[:15]:
+                lines.append(f"\nTable: {schema_name}.{table['name']}")
+                lines.append("Columns:")
+                
+                for column in table.get('columns', [])[:10]:
+                    col_type = column['type']
+                    constraints = []
+                    if column.get('is_primary_key'):
+                        constraints.append('PK')
+                    if column.get('is_foreign_key'):
+                        constraints.append('FK')
+                    
+                    constraint_str = f" [{', '.join(constraints)}]" if constraints else ""
+                    lines.append(f"  - {column['name']} ({col_type}){constraint_str}")
+        
+        return "\n".join(lines)
     
     def _get_schema_info(self, db_id: str) -> Optional[Dict[str, Any]]:
         """Get cached schema information"""

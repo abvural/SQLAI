@@ -7,6 +7,10 @@ import logging
 from contextlib import asynccontextmanager
 import uuid
 import time
+from dotenv import load_dotenv
+
+# Load environment variables first
+load_dotenv()
 
 from app.config import settings
 from app.routers import health, databases, schema, query, analytics

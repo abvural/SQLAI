@@ -1,0 +1,70 @@
+{
+  "timestamp": "2025-08-07T17:31:25.813176",
+  "tests": [
+    {
+      "name": "Environment Configuration",
+      "passed": false,
+      "details": "Missing: USE_LOCAL_LLM, OLLAMA_HOST, MISTRAL_MODEL, SQLCODER_MODEL, CHROMA_PERSIST_PATH",
+      "timestamp": "2025-08-07T17:31:25.813326"
+    },
+    {
+      "name": "Ollama Service Connection",
+      "passed": true,
+      "details": "",
+      "timestamp": "2025-08-07T17:31:25.965888"
+    },
+    {
+      "name": "Model Availability",
+      "passed": true,
+      "details": "",
+      "timestamp": "2025-08-07T17:31:25.979014"
+    },
+    {
+      "name": "LLM Service Initialization",
+      "passed": true,
+      "details": "",
+      "timestamp": "2025-08-07T17:31:26.005901"
+    },
+    {
+      "name": "Turkish Language Understanding",
+      "passed": true,
+      "details": "",
+      "timestamp": "2025-08-07T17:32:16.756575"
+    },
+    {
+      "name": "SQL Generation",
+      "passed": false,
+      "details": "Invalid SQL structure",
+      "timestamp": "2025-08-07T17:33:03.670186"
+    },
+    {
+      "name": "ChromaDB Vector Database",
+      "passed": false,
+      "details": "No module named 'chromadb'",
+      "timestamp": "2025-08-07T17:33:03.682577"
+    },
+    {
+      "name": "Schema Context Service",
+      "passed": false,
+      "details": "No module named 'chromadb'",
+      "timestamp": "2025-08-07T17:33:03.746127"
+    },
+    {
+      "name": "NLP Processor with LLM",
+      "passed": true,
+      "details": "",
+      "timestamp": "2025-08-07T17:33:14.137859"
+    },
+    {
+      "name": "Query Builder with LLM",
+      "passed": false,
+      "details": "'CacheService' object has no attribute 'set_cache'",
+      "timestamp": "2025-08-07T17:33:15.356387"
+    }
+  ],
+  "summary": {
+    "total": 10,
+    "passed": 5,
+    "failed": 5
+  }
+}
