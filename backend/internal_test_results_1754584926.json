@@ -1,0 +1,153 @@
+{
+  "timestamp": "2025-08-07T19:42:06.561132",
+  "summary": {
+    "total_tests": 11,
+    "passed": 8,
+    "failed": 3,
+    "success_rate": 72.72727272727273,
+    "duration": 120.66658282279968
+  },
+  "areas": {
+    "LLM Service Integration": {
+      "PASS": 1,
+      "FAIL": 0
+    },
+    "Model Availability": {
+      "PASS": 1,
+      "FAIL": 0
+    },
+    "Turkish Understanding": {
+      "PASS": 0,
+      "FAIL": 1
+    },
+    "SQL Generation": {
+      "PASS": 1,
+      "FAIL": 1
+    },
+    "Pattern Recognition": {
+      "PASS": 1,
+      "FAIL": 0
+    },
+    "Adaptive Learning": {
+      "PASS": 1,
+      "FAIL": 0
+    },
+    "End-to-End Integration": {
+      "PASS": 0,
+      "FAIL": 1
+    },
+    "Performance": {
+      "PASS": 1,
+      "FAIL": 0
+    },
+    "NLP Processor": {
+      "PASS": 1,
+      "FAIL": 0
+    },
+    "Text Normalization": {
+      "PASS": 1,
+      "FAIL": 0
+    }
+  },
+  "detailed_results": [
+    {
+      "test": "Real LLM Service Initialization",
+      "area": "LLM Service Integration",
+      "status": "PASS",
+      "duration": 0.25261521339416504,
+      "details": "Models: mistral:7b-instruct-q4_K_M, sqlcoder:latest | Connection: OK",
+      "error": "",
+      "timestamp": "2025-08-07T19:40:17.383242"
+    },
+    {
+      "test": "Ollama Models Availability",
+      "area": "Model Availability",
+      "status": "PASS",
+      "duration": 18.430799961090088,
+      "details": "Models OK: 2 loaded, Mistral+SQLCoder responsive",
+      "error": "",
+      "timestamp": "2025-08-07T19:40:35.814137"
+    },
+    {
+      "test": "Real Mistral Turkish Understanding",
+      "area": "Turkish Understanding",
+      "status": "FAIL",
+      "duration": 15.353241205215454,
+      "details": "",
+      "error": "Low success rate: 33.3% (threshold: 70%)",
+      "timestamp": "2025-08-07T19:40:51.175025"
+    },
+    {
+      "test": "Real SQLCoder SQL Generation",
+      "area": "SQL Generation",
+      "status": "FAIL",
+      "duration": 2.5990662574768066,
+      "details": "",
+      "error": "Low success rate: 0.0% (threshold: 70%)",
+      "timestamp": "2025-08-07T19:40:53.774314"
+    },
+    {
+      "test": "Pattern Recognition Systems",
+      "area": "Pattern Recognition",
+      "status": "PASS",
+      "duration": 0.00017714500427246094,
+      "details": "Pattern detection: 93.3% success (14/15)",
+      "error": "",
+      "timestamp": "2025-08-07T19:40:53.774514"
+    },
+    {
+      "test": "Adaptive Learning Integration",
+      "area": "Adaptive Learning",
+      "status": "PASS",
+      "duration": 5.830573081970215,
+      "details": "Schema learning OK, vocabulary: 6 terms",
+      "error": "",
+      "timestamp": "2025-08-07T19:40:59.605119"
+    },
+    {
+      "test": "End-to-End Query Processing",
+      "area": "End-to-End Integration",
+      "status": "FAIL",
+      "duration": 20.107131242752075,
+      "details": "",
+      "error": "Low E2E success rate: 66.7% (threshold: 70%)",
+      "timestamp": "2025-08-07T19:41:19.712385"
+    },
+    {
+      "test": "Performance Benchmarks",
+      "area": "Performance",
+      "status": "PASS",
+      "duration": 35.612136125564575,
+      "details": "Avg response: 7.12s, Success: 100.0%",
+      "error": "",
+      "timestamp": "2025-08-07T19:41:55.324760"
+    },
+    {
+      "test": "NLP Processor Initialization",
+      "area": "NLP Processor",
+      "status": "PASS",
+      "duration": 0.3413269519805908,
+      "details": "LLM integration: True, Service: OK",
+      "error": "",
+      "timestamp": "2025-08-07T19:41:55.666320"
+    },
+    {
+      "test": "Turkish Text Normalization",
+      "area": "Text Normalization",
+      "status": "PASS",
+      "duration": 0.001132965087890625,
+      "details": "Normalization: 100.0% success (3/3)",
+      "error": "",
+      "timestamp": "2025-08-07T19:41:55.667479"
+    },
+    {
+      "test": "Intelligent SQL Generation",
+      "area": "SQL Generation",
+      "status": "PASS",
+      "duration": 10.893514156341553,
+      "details": "SQL generation: 100.0% success (2/2)",
+      "error": "",
+      "timestamp": "2025-08-07T19:42:06.561023"
+    }
+  ]
+}
