@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
@@ -7,16 +7,18 @@ import logging
 from contextlib import asynccontextmanager
 import uuid
 import time
+import json
 from dotenv import load_dotenv
 
 # Load environment variables first
 load_dotenv()
 
 from app.config import settings
-from app.routers import health, databases, schema, query, analytics
+from app.routers import health, databases, schema, query, analytics, llm
 from app.models import init_db
 from app.utils.logging_config import setup_logging
 from app.utils.error_handlers import register_exception_handlers
+from app.websocket.manager import manager
 
 # Setup logging
 setup_logging()
@@ -100,21 +102,90 @@ if not settings.debug:
 # Compression middleware
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
-# CORS middleware
+# CORS middleware - Update to include all local development ports
+cors_origins = [
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "http://localhost:3002",
+    "http://localhost:3005",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:3002"
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins,
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["X-Request-ID", "X-Process-Time"]
+    expose_headers=["X-Request-ID", "X-Process-Time", "Content-Disposition", "X-Total-Count"]
 )
 
 app.include_router(health.router, prefix=settings.api_prefix, tags=["health"])
 app.include_router(databases.router, prefix=settings.api_prefix, tags=["databases"])
 app.include_router(schema.router, prefix=settings.api_prefix, tags=["schema"])
 app.include_router(query.router, prefix=settings.api_prefix, tags=["query"])
+
+app.include_router(llm.router, prefix=settings.api_prefix, tags=["llm"])
 app.include_router(analytics.router, prefix=settings.api_prefix, tags=["analytics"])
+
+# WebSocket endpoint for chat
+@app.websocket("/ws/chat/{db_id}")
+async def websocket_chat_endpoint(websocket: WebSocket, db_id: str):
+    """WebSocket endpoint for real-time chat interface"""
+    logger.info(f"WebSocket connection attempt for db_id: {db_id}")
+    
+    # Connect to room
+    await manager.connect(websocket, room_id=f"chat_{db_id}")
+    
+    try:
+        while True:
+            # Receive message from client
+            data = await websocket.receive_text()
+            
+            try:
+                # Parse JSON message
+                message = json.loads(data)
+                
+                # Handle message
+                await manager.handle_message(websocket, f"chat_{db_id}", message)
+                
+            except json.JSONDecodeError:
+                logger.error(f"Invalid JSON received: {data}")
+                await manager.send_personal_message({
+                    'type': 'error',
+                    'message': 'Invalid message format'
+                }, websocket)
+                
+    except WebSocketDisconnect:
+        logger.info(f"WebSocket disconnected for db_id: {db_id}")
+        manager.disconnect(websocket)
+    except Exception as e:
+        logger.error(f"WebSocket error: {e}")
+        manager.disconnect(websocket)
+
+# WebSocket endpoint for query monitoring
+@app.websocket("/ws/monitor/{query_id}")
+async def websocket_monitor_endpoint(websocket: WebSocket, query_id: str):
+    """WebSocket endpoint for real-time query monitoring"""
+    logger.info(f"WebSocket monitoring connection for query_id: {query_id}")
+    
+    # Connect to monitoring room
+    await manager.connect(websocket, room_id=f"monitor_{query_id}")
+    
+    try:
+        while True:
+            # Keep connection alive
+            await websocket.receive_text()
+            
+    except WebSocketDisconnect:
+        logger.info(f"WebSocket monitoring disconnected for query_id: {query_id}")
+        manager.disconnect(websocket)
+    except Exception as e:
+        logger.error(f"WebSocket monitoring error: {e}")
+        manager.disconnect(websocket)
 
 @app.get("/")
 async def root():

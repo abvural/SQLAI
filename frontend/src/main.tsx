@@ -4,6 +4,11 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ConfigProvider, App as AntdApp } from 'antd'
 import App from './App'
 import './index.css'
+import errorMonitor from './utils/errorMonitoring'
+
+// Initialize error monitoring
+console.log('🚀 SQLAI Frontend Starting...')
+console.log('🔍 Error monitoring enabled - Check console for any errors')
 
 const queryClient = new QueryClient({
   defaultOptions: {

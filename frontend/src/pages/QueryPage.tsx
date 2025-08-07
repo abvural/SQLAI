@@ -9,16 +9,22 @@ import {
   Tabs,
   message,
   Empty,
-  Spin
+  Spin,
+  Row,
+  Col
 } from 'antd'
 import {
   PlayCircleOutlined,
   ClearOutlined,
   DownloadOutlined,
-  StopOutlined
+  StopOutlined,
+  MessageOutlined,
+  CodeOutlined
 } from '@ant-design/icons'
 import MonacoEditor from '@monaco-editor/react'
 import { queryApi } from '../services/api'
+import ChatContainer from '../components/chat/ChatContainer'
+import LLMStatusIndicator from '../components/LLMStatus'
 
 const { TextArea } = Input
 const { TabPane } = Tabs
@@ -26,10 +32,10 @@ const { TabPane } = Tabs
 const QueryPage: React.FC = () => {
   const [naturalQuery, setNaturalQuery] = useState('')
   const [sqlQuery, setSqlQuery] = useState('')
-  const [selectedDb, setSelectedDb] = useState<string>('')
+  const [selectedDb, setSelectedDb] = useState<string>('2c6e26f5-f39e-4496-9c68-a400a508ec8b')
   const [queryResults, setQueryResults] = useState<any>(null)
   const [loading, setLoading] = useState(false)
-  const [activeTab, setActiveTab] = useState('natural')
+  const [activeTab, setActiveTab] = useState('chat')
   const [currentQueryId, setCurrentQueryId] = useState<string | null>(null)
 
   const handleNaturalQuery = async () => {
@@ -157,7 +163,33 @@ const QueryPage: React.FC = () => {
           </Select>
 
           <Tabs activeKey={activeTab} onChange={setActiveTab}>
-            <TabPane tab="Natural Language" key="natural">
+            <TabPane 
+              tab={
+                <span>
+                  <MessageOutlined />
+                  Chat Interface
+                </span>
+              } 
+              key="chat"
+            >
+              <Row gutter={16}>
+                <Col span={18}>
+                  <ChatContainer dbId={selectedDb} height="500px" />
+                </Col>
+                <Col span={6}>
+                  <LLMStatusIndicator />
+                </Col>
+              </Row>
+            </TabPane>
+            
+            <TabPane 
+              tab={
+                <span>
+                  <CodeOutlined />
+                  Natural Language
+                </span>
+              } 
+              key="natural">
               <Space direction="vertical" style={{ width: '100%' }} size="middle">
                 <TextArea
                   rows={4}

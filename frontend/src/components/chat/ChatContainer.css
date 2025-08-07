@@ -1,0 +1,260 @@
+.chat-container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.chat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.connection-status {
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.messages-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  background: linear-gradient(to bottom, #fafafa 0%, #ffffff 100%);
+}
+
+/* Custom scrollbar */
+.messages-area::-webkit-scrollbar {
+  width: 8px;
+}
+
+.messages-area::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.messages-area::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+.messages-area::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Message bubble animations */
+.message-bubble {
+  animation: slideIn 0.3s ease-out;
+  transition: all 0.2s ease;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.user-message {
+  animation: slideInRight 0.3s ease-out;
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.ai-message {
+  animation: slideInLeft 0.3s ease-out;
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Typing indicator */
+.typing-indicator {
+  padding: 12px;
+  background: #f0f0f0;
+  border-radius: 12px;
+  display: inline-block;
+  margin-left: 48px;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.6;
+  }
+}
+
+/* Processing stages */
+.processing-stages {
+  margin-top: 12px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+}
+
+.stage-item {
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.stage-item:last-child {
+  border-bottom: none;
+}
+
+/* Voice indicator */
+.voice-indicator {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.voice-wave {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* Chat input area */
+.chat-input-area {
+  border-top: 1px solid #f0f0f0;
+  background: #ffffff;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.chat-input-container {
+  position: relative;
+}
+
+/* Thread item hover effects */
+.thread-item {
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.thread-item:hover {
+  transform: translateX(4px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.thread-item.selected {
+  background: #e6f7ff !important;
+  border-color: #1890ff !important;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .messages-area {
+    padding: 12px;
+  }
+  
+  .message-bubble {
+    max-width: 85% !important;
+  }
+  
+  .chat-header {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .connection-status {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .chat-container {
+    background: #1f1f1f;
+    color: #ffffff;
+  }
+  
+  .messages-area {
+    background: linear-gradient(to bottom, #1a1a1a 0%, #1f1f1f 100%);
+  }
+  
+  .chat-input-area {
+    background: #1a1a1a;
+    border-top-color: #333;
+  }
+  
+  .typing-indicator {
+    background: #333;
+    color: #fff;
+  }
+  
+  .ai-message > div {
+    background: #333 !important;
+    color: #fff !important;
+  }
+}
+
+/* Loading animation */
+.loading-dots {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.loading-dots span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #1890ff;
+  animation: loadingDot 1.4s infinite ease-in-out both;
+}
+
+.loading-dots span:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.loading-dots span:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+@keyframes loadingDot {
+  0%, 80%, 100% {
+    transform: scale(0);
+    opacity: 0.5;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}

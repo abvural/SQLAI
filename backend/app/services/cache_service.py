@@ -85,6 +85,37 @@ class CacheService:
             return result
     
     @staticmethod
+    def get_database_info(db_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Get database information by ID
+        
+        Args:
+            db_id: Database connection ID
+            
+        Returns:
+            Database info dictionary or None if not found
+        """
+        with get_session() as session:
+            db_info = session.query(DatabaseInfo).filter_by(id=db_id).first()
+            if not db_info:
+                return None
+            
+            # Return as dict to avoid detached instance issues
+            return {
+                'id': db_info.id,
+                'name': db_info.name,
+                'host': db_info.host,
+                'port': db_info.port,
+                'database': db_info.database,
+                'username': db_info.username,
+                'total_tables': db_info.total_tables,
+                'total_columns': db_info.total_columns,
+                'total_relationships': db_info.total_relationships,
+                'last_analyzed': db_info.last_analyzed.isoformat() if db_info.last_analyzed else None,
+                'created_at': db_info.created_at.isoformat() if db_info.created_at else None
+            }
+    
+    @staticmethod
     def save_table_metadata(
         db_id: str,
         tables: List[Dict[str, Any]]

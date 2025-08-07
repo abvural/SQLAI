@@ -257,3 +257,182 @@ ENABLE_LEARNING=true
 - **SQL Injection Prevention**: Parametrized queries and input validation
 - **Request/Response Logging**: Structured logging with correlation IDs
 - **Connection Health**: Periodic health checks for database connections
+
+## Frontend Development Guidelines
+
+### 🎨 UI/UX Development
+- **Component Library**: Ant Design 5.x for consistent UI components
+- **Theme System**: CSS variables for dynamic theming (light/dark mode)
+- **Responsive Design**: Mobile-first approach with breakpoints
+- **Accessibility**: WCAG 2.1 AA compliance for all interactive elements
+
+### 🔌 WebSocket & Real-time Features
+```typescript
+// WebSocket connection for real-time features
+const WS_URL = process.env.NODE_ENV === 'production' 
+  ? 'wss://api.sqlai.com/ws'
+  : 'ws://localhost:8000/ws'
+
+// Reconnection strategy with exponential backoff
+const reconnectStrategy = {
+  maxAttempts: 5,
+  initialDelay: 1000,
+  maxDelay: 30000,
+  factor: 2
+}
+```
+
+### 🔒 CORS Configuration
+
+#### Backend CORS Setup (FastAPI)
+```python
+# backend/app/main.py
+from fastapi.middleware.cors import CORSMiddleware
+
+# CORS configuration for development and production
+origins = [
+    "http://localhost:5173",     # Vite default
+    "http://localhost:3000",     # React default
+    "http://localhost:3005",     # Custom port
+    "http://127.0.0.1:5173",    # Alternative localhost
+    "https://sqlai.app",         # Production domain
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_headers=["*"],
+    expose_headers=["Content-Disposition", "X-Total-Count"],
+    max_age=3600,  # Cache preflight requests for 1 hour
+)
+```
+
+#### Frontend Axios Configuration
+```typescript
+// frontend/src/services/api.ts
+import axios from 'axios'
+
+const API_BASE = process.env.NODE_ENV === 'production' 
+  ? 'https://api.sqlai.com'
+  : 'http://localhost:8000'
+
+const apiClient = axios.create({
+  baseURL: API_BASE,
+  withCredentials: true,  // Include cookies for CORS
+  headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  },
+  timeout: 30000,  // 30 second timeout
+})
+
+// Request interceptor for auth tokens
+apiClient.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('auth_token')
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
+    return config
+  },
+  (error) => Promise.reject(error)
+)
+```
+
+### 📦 State Management Strategy
+```typescript
+// Global state management approach
+- Server State: React Query (TanStack Query)
+- UI State: React Context API + useReducer
+- Form State: React Hook Form
+- Cache: React Query cache + localStorage
+
+// Example: Query with React Query
+const { data, isLoading, error } = useQuery({
+  queryKey: ['databases', selectedDb],
+  queryFn: () => databaseApi.getDetails(selectedDb),
+  staleTime: 5 * 60 * 1000,  // 5 minutes
+  cacheTime: 10 * 60 * 1000,  // 10 minutes
+})
+```
+
+### 🧪 Testing Requirements
+- **Unit Tests**: Jest + React Testing Library for components
+- **Integration Tests**: MSW (Mock Service Worker) for API mocking
+- **E2E Tests**: Playwright for critical user flows
+- **Coverage Target**: 80% for critical components
+
+### 🚀 Performance Optimization
+- **Code Splitting**: React.lazy() for route-based splitting
+- **Bundle Analysis**: Vite bundle visualizer for optimization
+- **Image Optimization**: WebP format with fallbacks
+- **Caching Strategy**: Service Worker for static assets
+- **Metrics**: Core Web Vitals monitoring
+
+### 📱 Responsive Breakpoints
+```scss
+// Consistent breakpoints across the application
+$breakpoint-xs: 480px;   // Mobile
+$breakpoint-sm: 768px;   // Tablet
+$breakpoint-md: 1024px;  // Small desktop
+$breakpoint-lg: 1280px;  // Desktop
+$breakpoint-xl: 1920px;  // Large desktop
+```
+
+### 🎯 New Feature Implementation Checklist
+1. [ ] Create feature branch from main
+2. [ ] Update TypeScript interfaces in `types/`
+3. [ ] Implement component with proper error boundaries
+4. [ ] Add loading states and skeleton screens
+5. [ ] Implement proper error handling with user feedback
+6. [ ] Add accessibility attributes (ARIA labels, roles)
+7. [ ] Write unit tests with >80% coverage
+8. [ ] Test on mobile devices and different browsers
+9. [ ] Update API documentation if needed
+10. [ ] Add feature flag if experimental
+
+### 🔥 Hot Module Replacement (HMR)
+```typescript
+// Vite HMR configuration for better DX
+if (import.meta.hot) {
+  import.meta.hot.accept()
+  import.meta.hot.dispose(() => {
+    // Cleanup code
+  })
+}
+```
+
+### 📊 Analytics & Monitoring
+```typescript
+// Error boundary with reporting
+class ErrorBoundary extends React.Component {
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    // Report to monitoring service
+    console.error('Error caught:', error, errorInfo)
+    // Send to analytics/monitoring service
+  }
+}
+```
+
+### 🌐 Internationalization (i18n) Preparation
+```typescript
+// Structure for future i18n implementation
+const translations = {
+  tr: {
+    query: {
+      placeholder: 'Sorgunuzu yazın...',
+      execute: 'Çalıştır',
+      cancel: 'İptal',
+    }
+  },
+  en: {
+    query: {
+      placeholder: 'Enter your query...',
+      execute: 'Execute',
+      cancel: 'Cancel',
+    }
+  }
+}
+```

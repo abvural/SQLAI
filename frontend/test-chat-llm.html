@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM Chat Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        h1 { color: #1890ff; }
+        .chat-box {
+            height: 400px;
+            overflow-y: auto;
+            border: 1px solid #d9d9d9;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 20px 0;
+            background: #fafafa;
+        }
+        .message {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .message.user {
+            background: #e6f4ff;
+            margin-left: 50px;
+            border-left: 3px solid #1890ff;
+        }
+        .message.ai {
+            background: #f6ffed;
+            margin-right: 50px;
+            border-left: 3px solid #52c41a;
+        }
+        .message .time {
+            font-size: 11px;
+            color: #8c8c8c;
+        }
+        .message pre {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        .input-area {
+            display: flex;
+            gap: 10px;
+        }
+        input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #d9d9d9;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        button {
+            padding: 10px 20px;
+            background: #1890ff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        button:hover {
+            background: #40a9ff;
+        }
+        button:disabled {
+            background: #d9d9d9;
+            cursor: not-allowed;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        .status.connected {
+            background: #f6ffed;
+            color: #52c41a;
+            border: 1px solid #b7eb8f;
+        }
+        .status.disconnected {
+            background: #fff2f0;
+            color: #ff4d4f;
+            border: 1px solid #ffccc7;
+        }
+        .test-queries {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #e8e8e8;
+        }
+        .test-btn {
+            margin: 5px;
+            padding: 8px 15px;
+            background: #722ed1;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .test-btn:hover {
+            background: #9254de;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 LLM Chat Test - SQLAI</h1>
+        
+        <div id="status" class="status disconnected">
+            ⚡ Disconnected
+        </div>
+        
+        <div class="chat-box" id="chatBox">
+            <div class="message ai">
+                <div class="time">System</div>
+                <div>Merhaba! Size nasıl yardımcı olabilirim? Veritabanı sorguları hakkında sorularınızı sorabilirsiniz.</div>
+            </div>
+        </div>
+        
+        <div class="input-area">
+            <input type="text" id="messageInput" placeholder="Sorgunuzu yazın..." disabled>
+            <button id="sendBtn" disabled>Gönder</button>
+            <button id="connectBtn">Bağlan</button>
+        </div>
+        
+        <div class="test-queries">
+            <h3>🧪 Test Sorguları</h3>
+            <button class="test-btn" onclick="sendQuery('Müşterileri göster')">Müşterileri göster</button>
+            <button class="test-btn" onclick="sendQuery('En çok satan ürünleri listele')">En çok satan ürünler</button>
+            <button class="test-btn" onclick="sendQuery('Sipariş tablosundaki tüm kayıtları getir')">Siparişler</button>
+            <button class="test-btn" onclick="sendQuery('Kategorilere göre ürün sayısı')">Kategori analizi</button>
+            <button class="test-btn" onclick="sendQuery('Show all customers')">English: Customers</button>
+            <button class="test-btn" onclick="sendQuery('Toplam satış tutarı ne kadar?')">Satış toplamı</button>
+            <button class="test-btn" onclick="sendQuery('En pahalı 5 ürünü getir')">En pahalı ürünler</button>
+            <button class="test-btn" onclick="sendQuery('Bugünkü siparişler')">Bugünkü siparişler</button>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let isConnected = false;
+        const dbId = '2c6e26f5-f39e-4496-9c68-a400a508ec8b';
+        
+        const statusEl = document.getElementById('status');
+        const chatBox = document.getElementById('chatBox');
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const connectBtn = document.getElementById('connectBtn');
+        
+        function updateStatus(connected) {
+            isConnected = connected;
+            statusEl.className = `status ${connected ? 'connected' : 'disconnected'}`;
+            statusEl.textContent = connected ? '✅ Bağlandı - LLM Hazır' : '⚡ Bağlantı Kesildi';
+            messageInput.disabled = !connected;
+            sendBtn.disabled = !connected;
+            connectBtn.textContent = connected ? 'Bağlantıyı Kes' : 'Bağlan';
+        }
+        
+        function addMessage(text, sender = 'ai', metadata = null) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}`;
+            
+            const time = new Date().toLocaleTimeString('tr-TR');
+            let content = `<div class="time">${time} - ${sender.toUpperCase()}</div>`;
+            
+            // Handle SQL in text
+            if (text.includes('```sql')) {
+                const parts = text.split('```sql');
+                content += `<div>${parts[0]}</div>`;
+                if (parts[1]) {
+                    const sqlParts = parts[1].split('```');
+                    content += `<pre><code>${sqlParts[0]}</code></pre>`;
+                    if (sqlParts[1]) {
+                        content += `<div>${sqlParts[1]}</div>`;
+                    }
+                }
+            } else {
+                content += `<div>${text}</div>`;
+            }
+            
+            // Add metadata if available
+            if (metadata) {
+                if (metadata.confidence !== undefined) {
+                    content += `<div style="margin-top: 10px; font-size: 12px; color: #8c8c8c;">`;
+                    content += `Güven: ${Math.round(metadata.confidence * 100)}%`;
+                    content += `</div>`;
+                }
+            }
+            
+            messageDiv.innerHTML = content;
+            chatBox.appendChild(messageDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+        
+        function connect() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                disconnect();
+                return;
+            }
+            
+            const wsUrl = `ws://localhost:8000/ws/chat/${dbId}`;
+            console.log('Connecting to:', wsUrl);
+            
+            ws = new WebSocket(wsUrl);
+            
+            ws.onopen = () => {
+                console.log('WebSocket connected');
+                updateStatus(true);
+                addMessage('Bağlantı kuruldu. LLM hazır!', 'ai');
+            };
+            
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    console.log('Received:', data);
+                    
+                    if (data.type === 'chat_message' && data.data) {
+                        const sender = data.sender || 'ai';
+                        const text = data.data.text || data.data.message || 'Yanıt alındı';
+                        const metadata = data.data.metadata;
+                        addMessage(text, sender, metadata);
+                    } else if (data.type === 'error') {
+                        addMessage(`Hata: ${data.data?.message || 'Bilinmeyen hata'}`, 'ai');
+                    } else if (data.type === 'typing') {
+                        // Show typing indicator
+                    }
+                } catch (e) {
+                    console.error('Parse error:', e);
+                    addMessage(`Ham mesaj: ${event.data}`, 'ai');
+                }
+            };
+            
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                addMessage('Bağlantı hatası oluştu', 'ai');
+            };
+            
+            ws.onclose = () => {
+                console.log('WebSocket disconnected');
+                updateStatus(false);
+                addMessage('Bağlantı kesildi', 'ai');
+            };
+        }
+        
+        function disconnect() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+        }
+        
+        function sendMessage() {
+            const text = messageInput.value.trim();
+            if (!text || !isConnected) return;
+            
+            const message = {
+                type: 'chat_message',
+                data: {
+                    text: text,
+                    timestamp: Date.now()
+                }
+            };
+            
+            console.log('Sending:', message);
+            ws.send(JSON.stringify(message));
+            addMessage(text, 'user');
+            messageInput.value = '';
+        }
+        
+        function sendQuery(query) {
+            if (!isConnected) {
+                alert('Lütfen önce bağlanın!');
+                return;
+            }
+            messageInput.value = query;
+            sendMessage();
+        }
+        
+        // Event listeners
+        connectBtn.addEventListener('click', connect);
+        sendBtn.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+        
+        // Auto-connect on load
+        setTimeout(() => {
+            console.log('Auto-connecting...');
+            connect();
+        }, 1000);
+    </script>
+</body>
+</html>

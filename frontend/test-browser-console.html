@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SQLAI Browser Console Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .header {
+            background: #1890ff;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .status.success { background: #52c41a; color: white; }
+        .status.error { background: #ff4d4f; color: white; }
+        .status.warning { background: #faad14; color: white; }
+        .status.info { background: #1890ff; color: white; }
+        .log-entry {
+            padding: 8px;
+            margin: 4px 0;
+            border-left: 3px solid #1890ff;
+            background: #f0f7ff;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .error-log {
+            border-color: #ff4d4f;
+            background: #fff2f0;
+        }
+        button {
+            background: #1890ff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 4px;
+        }
+        button:hover {
+            background: #40a9ff;
+        }
+        iframe {
+            width: 100%;
+            height: 600px;
+            border: 1px solid #d9d9d9;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🧪 SQLAI Browser Console Test</h1>
+        <p>Testing JavaScript execution and console error monitoring</p>
+    </div>
+
+    <div class="test-section">
+        <h2>1. Console Error Monitoring <span class="status info">ACTIVE</span></h2>
+        <p>All JavaScript errors and warnings are being captured:</p>
+        <div id="console-logs"></div>
+        <button onclick="testError()">Trigger Test Error</button>
+        <button onclick="testPromiseRejection()">Trigger Promise Rejection</button>
+        <button onclick="clearLogs()">Clear Logs</button>
+    </div>
+
+    <div class="test-section">
+        <h2>2. API Status Check</h2>
+        <button onclick="checkAPI()">Check Backend API</button>
+        <button onclick="checkWebSocket()">Test WebSocket</button>
+        <div id="api-status"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>3. Live Application</h2>
+        <p>Frontend running at: <a href="http://localhost:3002" target="_blank">http://localhost:3002</a></p>
+        <iframe id="app-frame" src="http://localhost:3002"></iframe>
+    </div>
+
+    <div class="test-section">
+        <h2>4. Performance Metrics</h2>
+        <button onclick="checkPerformance()">Check Performance</button>
+        <div id="performance-metrics"></div>
+    </div>
+
+    <script>
+        // Console error monitoring
+        const logs = [];
+        const maxLogs = 50;
+
+        // Override console methods
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            addLog('log', args);
+        };
+
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            addLog('error', args);
+        };
+
+        console.warn = function(...args) {
+            originalWarn.apply(console, args);
+            addLog('warn', args);
+        };
+
+        // Capture window errors
+        window.addEventListener('error', (event) => {
+            addLog('error', [`Runtime Error: ${event.message}`, `at ${event.filename}:${event.lineno}:${event.colno}`]);
+        });
+
+        // Capture unhandled promise rejections
+        window.addEventListener('unhandledrejection', (event) => {
+            addLog('error', [`Unhandled Promise Rejection: ${event.reason}`]);
+        });
+
+        function addLog(type, args) {
+            const timestamp = new Date().toLocaleTimeString();
+            const message = args.map(arg => {
+                if (typeof arg === 'object') {
+                    try {
+                        return JSON.stringify(arg, null, 2);
+                    } catch {
+                        return String(arg);
+                    }
+                }
+                return String(arg);
+            }).join(' ');
+
+            logs.push({ type, message, timestamp });
+            if (logs.length > maxLogs) {
+                logs.shift();
+            }
+            updateLogDisplay();
+        }
+
+        function updateLogDisplay() {
+            const container = document.getElementById('console-logs');
+            container.innerHTML = logs.map(log => {
+                const className = log.type === 'error' ? 'log-entry error-log' : 'log-entry';
+                return `<div class="${className}">[${log.timestamp}] ${log.type.toUpperCase()}: ${log.message}</div>`;
+            }).join('');
+        }
+
+        function clearLogs() {
+            logs.length = 0;
+            updateLogDisplay();
+        }
+
+        function testError() {
+            throw new Error('This is a test error!');
+        }
+
+        function testPromiseRejection() {
+            Promise.reject('This is a test promise rejection!');
+        }
+
+        async function checkAPI() {
+            const statusDiv = document.getElementById('api-status');
+            try {
+                const response = await fetch('http://localhost:8000/api/health');
+                const data = await response.json();
+                statusDiv.innerHTML = `
+                    <div class="log-entry">
+                        <strong>✅ Backend API Status:</strong><br>
+                        Status: ${data.status}<br>
+                        Version: ${data.version}<br>
+                        Environment: ${data.environment}<br>
+                        Timestamp: ${data.timestamp}
+                    </div>
+                `;
+            } catch (error) {
+                statusDiv.innerHTML = `<div class="log-entry error-log">❌ API Error: ${error.message}</div>`;
+            }
+        }
+
+        async function checkWebSocket() {
+            const statusDiv = document.getElementById('api-status');
+            try {
+                const ws = new WebSocket('ws://localhost:8000/ws/chat/test-db');
+                
+                ws.onopen = () => {
+                    statusDiv.innerHTML += `<div class="log-entry">✅ WebSocket connected!</div>`;
+                    ws.send(JSON.stringify({ type: 'ping', data: { timestamp: Date.now() } }));
+                };
+                
+                ws.onmessage = (event) => {
+                    statusDiv.innerHTML += `<div class="log-entry">📨 WebSocket message: ${event.data}</div>`;
+                };
+                
+                ws.onerror = (error) => {
+                    statusDiv.innerHTML += `<div class="log-entry error-log">❌ WebSocket error: ${error}</div>`;
+                };
+                
+                ws.onclose = () => {
+                    statusDiv.innerHTML += `<div class="log-entry">🔌 WebSocket closed</div>`;
+                };
+                
+                setTimeout(() => ws.close(), 5000);
+            } catch (error) {
+                statusDiv.innerHTML += `<div class="log-entry error-log">❌ WebSocket Error: ${error.message}</div>`;
+            }
+        }
+
+        function checkPerformance() {
+            const metricsDiv = document.getElementById('performance-metrics');
+            
+            const metrics = {
+                'Page Load Time': `${performance.timing.loadEventEnd - performance.timing.navigationStart}ms`,
+                'DOM Ready': `${performance.timing.domContentLoadedEventEnd - performance.timing.navigationStart}ms`,
+                'First Paint': performance.getEntriesByType('paint')[0]?.startTime?.toFixed(2) + 'ms' || 'N/A'
+            };
+
+            if (performance.memory) {
+                metrics['JS Heap Used'] = `${(performance.memory.usedJSHeapSize / 1048576).toFixed(2)} MB`;
+                metrics['JS Heap Total'] = `${(performance.memory.totalJSHeapSize / 1048576).toFixed(2)} MB`;
+            }
+
+            metricsDiv.innerHTML = Object.entries(metrics).map(([key, value]) => 
+                `<div class="log-entry"><strong>${key}:</strong> ${value}</div>`
+            ).join('');
+        }
+
+        // Initial load
+        console.log('🚀 Browser Console Test Started');
+        console.log('🔍 Monitoring for errors...');
+        
+        // Check iframe for errors
+        document.getElementById('app-frame').addEventListener('load', function() {
+            try {
+                const iframeWindow = this.contentWindow;
+                console.log('✅ Frontend iframe loaded successfully');
+                
+                // Try to access error monitor if available
+                if (iframeWindow.errorMonitor) {
+                    const errors = iframeWindow.errorMonitor.getErrors();
+                    console.log(`📊 Frontend Error Monitor: ${errors.length} errors captured`);
+                }
+            } catch (e) {
+                console.warn('⚠️ Cannot access iframe contents (CORS)');
+            }
+        });
+    </script>
+</body>
+</html>
