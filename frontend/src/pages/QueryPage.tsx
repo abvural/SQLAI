@@ -44,34 +44,36 @@ const QueryPage: React.FC = () => {
 
     setLoading(true)
     try {
-      // Direct Turkish to SQL conversion
-      let sql = '';
-      if (naturalQuery.toLowerCase().includes('müşteri') || naturalQuery.toLowerCase().includes('kullanıcı')) {
-        sql = 'SELECT username, email FROM users LIMIT 10';
-      } else if (naturalQuery.toLowerCase().includes('ürün') || naturalQuery.toLowerCase().includes('product')) {
-        sql = 'SELECT name, price, category FROM products LIMIT 10';
-      } else if (naturalQuery.toLowerCase().includes('sipariş') || naturalQuery.toLowerCase().includes('order')) {
-        sql = 'SELECT * FROM orders LIMIT 10';
-      } else {
-        sql = 'SELECT username, email FROM users LIMIT 10';
-      }
+      // Use the LLM-powered natural language API (Mistral + SQLCoder)
+      message.info('🧠 Processing with Local LLM (Mistral + SQLCoder)...')
       
-      message.info(`Converting Turkish to SQL: ${sql}`)
-      setSqlQuery(sql + ' -- (Generated from Turkish: "' + naturalQuery + '")')
-      
-      const directResponse = await queryApi.executeSQLQuery({
-        sql: sql,
+      const response = await queryApi.executeNaturalQuery({
+        prompt: naturalQuery,
         db_id: selectedDb,
+        confidence_threshold: 0.1
       })
       
-      if (directResponse.status === 'completed') {
-        setQueryResults(directResponse.results || [])
-        message.success(`Turkish query executed! ${directResponse.row_count || 0} rows found`)
+      if (response.status === 'completed') {
+        setSqlQuery(response.sql + ' -- (Generated from: "' + naturalQuery + '")')
+        setQueryResults(response.results || [])
+        message.success(`🎯 LLM Query Success! ${response.row_count || 0} rows found (Confidence: ${(response.confidence * 100).toFixed(0)}%)`)
+      } else if (response.status === 'low_confidence') {
+        setSqlQuery(response.sql + ' -- (Generated from: "' + naturalQuery + '")')
+        message.warning(`Query generated but confidence is low (${(response.confidence * 100).toFixed(0)}%). SQL: ${response.sql}`)
+        setQueryResults([])
+      } else if (response.status === 'failed') {
+        message.error('AI could not understand the query: ' + (response.error || 'Unknown error'))
+        setSqlQuery('')
+        setQueryResults([])
       } else {
-        message.error('Query failed: ' + (directResponse.error || 'Unknown error'))
+        message.error('Query processing error: ' + (response.error || 'Unknown error'))
+        setSqlQuery('')
+        setQueryResults([])
       }
     } catch (error: any) {
-      message.error('Query failed: ' + (error.response?.data?.detail || error.message))
+      message.error('Natural language query failed: ' + (error.response?.data?.detail || error.message))
+      setSqlQuery('')
+      setQueryResults([])
     } finally {
       setLoading(false)
     }
@@ -150,8 +152,8 @@ const QueryPage: React.FC = () => {
             value={selectedDb}
             onChange={setSelectedDb}
           >
-            <Select.Option value="29f76a6e-ada9-4d9e-9b64-f3f65658e7c2">Test Database (172.17.12.76)</Select.Option>
-            <Select.Option value="4e27991f-8d54-435f-9103-c6f33b63f0b3">Test Database (Old)</Select.Option>
+            <Select.Option value="2c6e26f5-f39e-4496-9c68-a400a508ec8b">PostgreSQL Test Database (172.17.12.76) - 11 Tables</Select.Option>
+            <Select.Option value="29f76a6e-ada9-4d9e-9b64-f3f65658e7c2">Test Database (Old)</Select.Option>
           </Select>
 
           <Tabs activeKey={activeTab} onChange={setActiveTab}>
@@ -160,11 +162,18 @@ const QueryPage: React.FC = () => {
                 <TextArea
                   rows={4}
                   placeholder="Enter your query in natural language... 
-Examples:
-• Müşterileri listele (List customers)
-• En çok sipariş veren müşteri (Customer with most orders)  
-• Son bir aydaki siparişler (Orders from last month)
-• Toplam satış tutarı (Total sales amount)"
+
+✅ WORKING EXAMPLES (LLM Powered):
+• kullanıcı sayısı (Count users)
+• en fazla sipariş veren müşteri (Customer with most orders)
+• kaç kullanıcı var (How many users)
+• count users (English also supported)
+
+📝 Try other queries:
+• müşteri segmentleri (Customer segments)
+• departman bilgileri (Department info)  
+• satış verileri (Sales data)
+• çalışan listesi (Employee list)"
                   value={naturalQuery}
                   onChange={(e) => setNaturalQuery(e.target.value)}
                 />
